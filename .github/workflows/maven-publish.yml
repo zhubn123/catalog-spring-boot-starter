@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
       
@@ -16,10 +19,12 @@ jobs:
         with:
           java-version: '17'  # 使用与项目匹配的 JDK 版本
           distribution: 'adopt'
-          server-id: github  # 与 settings.xml 中的 server id 一致
-          settings-path: ${{ github.workspace }}  # GitHub Actions 会自动处理认证
+          server-id: github
+          server-username: GITHUB_USERNAME
+          server-password: GITHUB_TOKEN
       
       - name: Build and publish
-        run: mvn deploy
+        run: mvn deploy -DskipTests
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub Actions 自动提供的令牌
+          GITHUB_USERNAME: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
