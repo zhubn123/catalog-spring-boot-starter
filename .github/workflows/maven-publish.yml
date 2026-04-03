@@ -1,0 +1,25 @@
+name: Maven Package
+
+on:
+  push:
+    tags:
+      - '*'  # 当推送标签时触发发布
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'  # 使用与项目匹配的 JDK 版本
+          distribution: 'adopt'
+          server-id: github  # 与 settings.xml 中的 server id 一致
+          settings-path: ${{ github.workspace }}  # GitHub Actions 会自动处理认证
+      
+      - name: Build and publish
+        run: mvn deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub Actions 自动提供的令牌
