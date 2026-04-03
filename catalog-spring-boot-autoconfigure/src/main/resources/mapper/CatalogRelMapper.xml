@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.berlin.catalog.mapper.CatalogRelMapper">
+
+    <resultMap id="BaseResultMap" type="com.berlin.catalog.domain.CatalogRel">
+        <id column="id" property="id"/>
+        <result column="node_id" property="nodeId"/>
+        <result column="biz_id" property="bizId"/>
+        <result column="biz_type" property="bizType"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.berlin.catalog.domain.CatalogRel"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO catalog_rel (node_id, biz_id, biz_type)
+        VALUES (#{nodeId}, #{bizId}, #{bizType})
+    </insert>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO catalog_rel (node_id, biz_id, biz_type)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.nodeId}, #{item.bizId}, #{item.bizType})
+        </foreach>
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM catalog_rel
+        WHERE node_id = #{nodeId} AND biz_id = #{bizId} AND biz_type = #{bizType}
+    </delete>
+
+    <delete id="deleteByNodeIds">
+        DELETE FROM catalog_rel WHERE node_id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="selectByBiz" resultMap="BaseResultMap">
+        SELECT id, node_id, biz_id, biz_type
+        FROM catalog_rel
+        WHERE biz_id = #{bizId} AND biz_type = #{bizType}
+    </select>
+
+    <select id="selectByNode" resultMap="BaseResultMap">
+        SELECT id, node_id, biz_id, biz_type
+        FROM catalog_rel
+        WHERE node_id = #{nodeId}
+        <if test="bizType != null">
+            AND biz_type = #{bizType}
+        </if>
+    </select>
+
+    <select id="selectBizIdsByNodeIds" resultType="java.lang.String">
+        SELECT DISTINCT biz_id FROM catalog_rel
+        WHERE node_id IN
+        <foreach collection="nodeIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        <if test="bizType != null">
+            AND biz_type = #{bizType}
+        </if>
+    </select>
+
+    <select id="countByNodeIds" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM catalog_rel WHERE node_id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+</mapper>

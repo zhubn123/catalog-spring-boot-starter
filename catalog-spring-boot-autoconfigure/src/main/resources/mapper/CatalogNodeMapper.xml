@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.berlin.catalog.mapper.CatalogNodeMapper">
+
+    <resultMap id="BaseResultMap" type="com.berlin.catalog.domain.CatalogNode">
+        <id column="id" property="id"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="name" property="name"/>
+        <result column="code" property="code"/>
+        <result column="path" property="path"/>
+        <result column="level" property="level"/>
+        <result column="sort" property="sort"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, parent_id, name, code, path, level, sort
+    </sql>
+
+    <insert id="insert" parameterType="com.berlin.catalog.domain.CatalogNode"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO catalog_node (parent_id, name, code, path, level, sort)
+        VALUES (#{parentId}, #{name}, #{code}, #{path}, #{level}, #{sort})
+    </insert>
+
+    <insert id="batchInsert" parameterType="java.util.List" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO catalog_node (parent_id, name, code, path, level, sort)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.parentId}, #{item.name}, #{item.code}, #{item.path}, #{item.level}, #{item.sort})
+        </foreach>
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM catalog_node
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM catalog_node
+        WHERE id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM catalog_node
+        ORDER BY path
+    </select>
+
+    <select id="selectByParentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM catalog_node
+        WHERE parent_id = #{parentId}
+        ORDER BY sort
+    </select>
+
+    <select id="selectByPathPrefix" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM catalog_node
+        WHERE path LIKE CONCAT(#{path}, '/%') OR path = #{path}
+        ORDER BY path
+    </select>
+
+    <select id="selectMaxSortByParent" resultType="java.lang.Integer">
+        SELECT MAX(sort) FROM catalog_node WHERE parent_id = #{parentId}
+    </select>
+
+    <select id="countChildren" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM catalog_node WHERE parent_id = #{nodeId}
+    </select>
+
+    <select id="selectIdsHavingChildren" resultType="java.lang.Long">
+        SELECT DISTINCT parent_id FROM catalog_node
+        WHERE parent_id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <update id="updatePath">
+        UPDATE catalog_node SET path = #{path} WHERE id = #{id}
+    </update>
+
+    <update id="batchUpdatePath" parameterType="java.util.List">
+        <foreach collection="list" item="item" separator=";">
+            UPDATE catalog_node SET path = #{item.path} WHERE id = #{item.id}
+        </foreach>
+    </update>
+
+    <update id="updateBasic">
+        UPDATE catalog_node
+        SET name = COALESCE(#{name}, name),
+            code = COALESCE(#{code}, code)
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateSort">
+        UPDATE catalog_node SET sort = #{sort} WHERE id = #{id}
+    </update>
+
+    <update id="updateParentLevelPathSort">
+        UPDATE catalog_node
+        SET parent_id = #{parentId},
+            level = #{level},
+            path = #{path},
+            sort = #{sort}
+        WHERE id = #{id}
+    </update>
+
+    <update id="moveSubtree">
+        UPDATE catalog_node
+        SET path = CONCAT(#{newPath}, SUBSTRING(path, LENGTH(#{oldPath}) + 1)),
+            level = level + #{levelDelta}
+        WHERE path LIKE CONCAT(#{oldPath}, '/%')
+    </update>
+
+    <update id="decrementSortAfter">
+        UPDATE catalog_node
+        SET sort = sort - 1
+        WHERE parent_id = #{parentId} AND sort > #{afterSort}
+    </update>
+
+    <update id="incrementSortFrom">
+        UPDATE catalog_node
+        SET sort = sort + 1
+        WHERE parent_id = #{parentId} AND sort >= #{fromSort}
+    </update>
+
+    <update id="decrementSortRange">
+        UPDATE catalog_node
+        SET sort = sort - 1
+        WHERE parent_id = #{parentId}
+          AND sort BETWEEN #{fromSort} AND #{toSort}
+          AND id != #{excludeId}
+    </update>
+
+    <update id="incrementSortRange">
+        UPDATE catalog_node
+        SET sort = sort + 1
+        WHERE parent_id = #{parentId}
+          AND sort BETWEEN #{fromSort} AND #{toSort}
+          AND id != #{excludeId}
+    </update>
+
+    <delete id="deleteByIds">
+        DELETE FROM catalog_node WHERE id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>
