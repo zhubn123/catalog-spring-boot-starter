@@ -1,4 +1,4 @@
-package com.berlin.catalog.mapper;
+package io.github.zhubn123.catalog.mapper;
 
 import com.berlin.catalog.domain.CatalogRel;
 import org.apache.ibatis.annotations.Mapper;
@@ -6,8 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import java.util.List;
 
 /**
- * 业务绑定关系数据访问层接口
- * 
+ * 业务绑定关系数据访问层接�? * 
  * @author zhubn
  * @date 2026/4/2
  */
@@ -30,3 +29,4 @@ public interface CatalogRelMapper {
 
     Integer countByNodeIds(List<Long> nodeIds);
 }
+

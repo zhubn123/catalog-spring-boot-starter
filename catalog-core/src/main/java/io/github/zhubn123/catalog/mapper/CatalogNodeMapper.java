@@ -1,4 +1,4 @@
-package com.berlin.catalog.mapper;
+package io.github.zhubn123.catalog.mapper;
 
 import com.berlin.catalog.domain.CatalogNode;
 import org.apache.ibatis.annotations.Mapper;
@@ -6,8 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import java.util.List;
 
 /**
- * 目录节点数据访问层接口
- * 
+ * 目录节点数据访问层接�? * 
  * @author zhubn
  * @date 2026/4/2
  */
@@ -56,3 +55,4 @@ public interface CatalogNodeMapper {
 
     void deleteByIds(List<Long> ids);
 }
+

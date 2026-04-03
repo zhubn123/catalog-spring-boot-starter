@@ -51,8 +51,7 @@ public class DeliveryItem {
      */
     private Date uploadTime;
     /**
-     * 上传人
-     */
+     * 上传�?     */
     private String uploader;
     /**
      * 需求负责人

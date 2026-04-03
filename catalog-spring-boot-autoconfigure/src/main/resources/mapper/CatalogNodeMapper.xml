@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.berlin.catalog.mapper.CatalogNodeMapper">
+<mapper namespace="io.github.zhubn123.catalog.mapper.CatalogNodeMapper">
 
-    <resultMap id="BaseResultMap" type="com.berlin.catalog.domain.CatalogNode">
+    <resultMap id="BaseResultMap" type="io.github.zhubn123.catalog.domain.CatalogNode">
         <id column="id" property="id"/>
         <result column="parent_id" property="parentId"/>
         <result column="name" property="name"/>
@@ -16,7 +16,7 @@
         id, parent_id, name, code, path, level, sort
     </sql>
 
-    <insert id="insert" parameterType="com.berlin.catalog.domain.CatalogNode"
+    <insert id="insert" parameterType="io.github.zhubn123.catalog.domain.CatalogNode"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO catalog_node (parent_id, name, code, path, level, sort)
         VALUES (#{parentId}, #{name}, #{code}, #{path}, #{level}, #{sort})
@@ -154,3 +154,4 @@
     </delete>
 
 </mapper>
+

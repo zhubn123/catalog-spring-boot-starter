@@ -4,13 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.berlin</groupId>
+    <groupId>io.github.zhubn123</groupId>
     <artifactId>catalog-spring-boot-starter-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Catalog Spring Boot Starter</name>
-    <description>通用目录树管理组件 - Spring Boot Starter</description>
+    <description>通用目录树管理组�?- Spring Boot Starter</description>
     <url>https://github.com/zhubn123/catalog-spring-boot-starter</url>
 
     <licenses>
@@ -27,6 +27,13 @@
             <email>zhubn@example.com</email>
         </developer>
     </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/zhubn123/catalog-spring-boot-starter.git</connection>
+        <developerConnection>scm:git:https://github.com/zhubn123/catalog-spring-boot-starter.git</developerConnection>
+        <url>https://github.com/zhubn123/catalog-spring-boot-starter</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <properties>
         <java.version>17</java.version>
@@ -67,13 +74,13 @@
             </dependency>
 
             <dependency>
-                <groupId>com.berlin</groupId>
+                <groupId>io.github.zhubn123</groupId>
                 <artifactId>catalog-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>com.berlin</groupId>
+                <groupId>io.github.zhubn123</groupId>
                 <artifactId>catalog-spring-boot-autoconfigure</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -124,6 +131,20 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
@@ -136,3 +157,4 @@
     </distributionManagement>
 
 </project>
+

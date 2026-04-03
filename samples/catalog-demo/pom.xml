@@ -28,7 +28,7 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.berlin</groupId>
+            <groupId>io.github.zhubn123</groupId>
             <artifactId>catalog-spring-boot-starter</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
@@ -38,7 +38,7 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.berlin</groupId>
+            <groupId>io.github.zhubn123</groupId>
             <artifactId>catalog-spring-boot-starter-parent</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
@@ -59,3 +59,4 @@
     </build>
 
 </project>
+

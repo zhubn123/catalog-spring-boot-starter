@@ -1,4 +1,4 @@
-package com.berlin.catalog.service;
+package io.github.zhubn123.catalog.service;
 
 import com.berlin.catalog.domain.CatalogNode;
 import com.berlin.catalog.domain.CatalogRel;
@@ -22,8 +22,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 目录领域服务实现类
- * 
+ * 目录领域服务实现�? * 
  * @author zhubn
  * @date 2026/4/2
  */
@@ -567,3 +566,4 @@ public class CatalogServiceImpl implements CatalogService {
         }
     }
 }
+

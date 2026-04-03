@@ -16,7 +16,7 @@
 
 ```xml
 <dependency>
-    <groupId>com.berlin</groupId>
+    <groupId>io.github.zhubn123</groupId>
     <artifactId>catalog-spring-boot-starter</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
