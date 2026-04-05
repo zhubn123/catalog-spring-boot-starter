@@ -1,0 +1,66 @@
+name: Bug Report
+description: 报告缺陷、异常行为或回归问题
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈问题。请尽量补充可复现信息，方便快速定位和修复。
+  - type: textarea
+    id: current_behavior
+    attributes:
+      label: 当前表现
+      description: 实际出现了什么问题？
+      placeholder: 例如：调用 /catalog/tree 接口时返回顺序异常，同级节点排序不稳定。
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: 期望表现
+      description: 你希望它如何工作？
+      placeholder: 例如：同级节点应按 sort 字段升序返回。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce_steps
+    attributes:
+      label: 复现步骤
+      description: 请给出尽量稳定的复现步骤。
+      placeholder: |
+        1. 创建 3 个同级节点
+        2. 调整 sort 为 1、2、10
+        3. 调用查询接口
+        4. 观察返回顺序
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 影响范围
+      description: 涉及哪些模块、接口、场景？
+      placeholder: 例如：catalog-core、REST API、sample 项目
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息
+      description: 请补充运行环境，便于排查。
+      placeholder: |
+        - JDK:
+        - Spring Boot:
+        - MySQL:
+        - Maven:
+        - OS:
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图
+      description: 如有异常堆栈、SQL 报错、截图，可粘贴在这里。
+      render: shell
+    validations:
+      required: false
+

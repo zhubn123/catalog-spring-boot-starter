@@ -1,0 +1,62 @@
+name: Refactor Task
+description: 用于结构优化、解耦、工程治理和维护性整改
+title: "[Refactor] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        适用于重构、优化、治理类任务。建议一个 issue 只处理一个明确目标，方便跟踪和验收。
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: 当前为什么需要做这项整改？
+      placeholder: 例如：当前 CatalogServiceImpl 职责过多，导致测试困难、修改风险高。
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目标
+      description: 这项任务希望达成什么结果？
+      placeholder: 例如：将节点命令、绑定命令、查询逻辑拆分，降低单类复杂度。
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 改动范围
+      description: 涉及哪些模块、文件或接口？
+      placeholder: |
+        - catalog-core
+        - catalog-spring-boot-autoconfigure
+        - README
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 请写出能落地检查的完成标准。
+      placeholder: |
+        - 不再依赖多语句 SQL
+        - 相关接口行为保持一致
+        - 回归测试通过
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: 不在本任务范围内
+      description: 明确这次不做什么，避免范围失控。
+      placeholder: 例如：本任务不调整 REST API 结构，只处理 Mapper 和 Service 层。
+    validations:
+      required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: 备注
+      description: 可补充依赖关系、风险、参考 issue 或设计说明。
+    validations:
+      required: false
+

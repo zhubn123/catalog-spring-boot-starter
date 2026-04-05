@@ -1,0 +1,52 @@
+name: Feature Request
+description: 提出新能力、新接口或体验改进建议
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        建议优先描述场景和目标，再描述方案。这样更容易讨论是否值得做、应该怎么做。
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景与场景
+      description: 这个需求是为了解决什么使用场景？
+      placeholder: 例如：需要支持查询业务对象绑定的全部目录路径，而不是只返回第一条。
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 当前问题
+      description: 现状为什么不够用？
+      placeholder: 例如：当前 getBizPath 只返回单路径，无法表达多绑定关系。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 你倾向的实现方式是什么？
+      placeholder: 例如：新增 getBizPaths 接口，并保留旧接口但标注语义。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 备选方案
+      description: 是否有其他可接受方案？
+      placeholder: 例如：改成只允许单绑定，并补唯一约束。
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 这项需求做完后，如何判断它是完成的？
+      placeholder: |
+        - 文档补齐
+        - 接口返回值明确
+        - 相关测试通过
+    validations:
+      required: true
+
