@@ -1,5 +1,6 @@
-﻿package io.github.zhubn123.catalog.autoconfigure;
+package io.github.zhubn123.catalog.autoconfigure;
 
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -10,6 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author zhubn
  * @date 2026/4/2
  */
+@Data
 @ConfigurationProperties(prefix = "catalog")
 public class CatalogProperties {
 
@@ -28,27 +30,4 @@ public class CatalogProperties {
      */
     private boolean initSchema = false;
 
-    public String getTablePrefix() {
-        return tablePrefix;
-    }
-
-    public void setTablePrefix(String tablePrefix) {
-        this.tablePrefix = tablePrefix;
-    }
-
-    public boolean isEnableRestApi() {
-        return enableRestApi;
-    }
-
-    public void setEnableRestApi(boolean enableRestApi) {
-        this.enableRestApi = enableRestApi;
-    }
-
-    public boolean isInitSchema() {
-        return initSchema;
-    }
-
-    public void setInitSchema(boolean initSchema) {
-        this.initSchema = initSchema;
-    }
 }

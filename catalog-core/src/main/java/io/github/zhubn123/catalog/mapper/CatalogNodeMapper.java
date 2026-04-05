@@ -1,4 +1,4 @@
-﻿package io.github.zhubn123.catalog.mapper;
+package io.github.zhubn123.catalog.mapper;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import org.apache.ibatis.annotations.Mapper;

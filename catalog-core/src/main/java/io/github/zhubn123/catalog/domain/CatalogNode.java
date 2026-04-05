@@ -1,4 +1,4 @@
-﻿package io.github.zhubn123.catalog.domain;
+package io.github.zhubn123.catalog.domain;
 
 import lombok.Data;
 

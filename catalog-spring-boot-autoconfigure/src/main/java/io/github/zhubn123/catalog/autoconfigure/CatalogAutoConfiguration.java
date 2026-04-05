@@ -1,4 +1,4 @@
-﻿package io.github.zhubn123.catalog.autoconfigure;
+package io.github.zhubn123.catalog.autoconfigure;
 
 import io.github.zhubn123.catalog.service.CatalogService;
 import io.github.zhubn123.catalog.service.CatalogServiceImpl;

@@ -13,7 +13,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<?> handleException(Exception e, HttpServletRequest request) {
         log.error("请求路径：{}", request.getRequestURI(), e);
-        return Result.fail(ResultCode.SYSTEM_ERROR.getCode(), "系统内部错误�? + e.getMessage());
+        return Result.fail(ResultCode.SYSTEM_ERROR.getCode(), "系统内部错误: " + e.getMessage());
     }
 
     @ExceptionHandler(RuntimeException.class)
@@ -25,6 +25,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public Result<?> handleIllegalArgumentException(IllegalArgumentException e, HttpServletRequest request) {
         log.error("请求路径：{}", request.getRequestURI(), e);
-        return Result.fail(ResultCode.PARAM_ERROR.getCode(), "参数错误�? + e.getMessage());
+        return Result.fail(ResultCode.PARAM_ERROR.getCode(), "参数错误: " + e.getMessage());
     }
 }
