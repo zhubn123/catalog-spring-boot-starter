@@ -1,7 +1,7 @@
-package io.github.zhubn123.catalog.autoconfigure;
+﻿package io.github.zhubn123.catalog.autoconfigure;
 
-import com.berlin.catalog.domain.CatalogNode;
-import com.berlin.catalog.service.CatalogService;
+import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.service.CatalogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,9 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 目录管理REST API控制�? * 
- * <p>提供目录树操作的RESTful API，可通过配置关闭�?/p>
- * 
+ * 目录管理 REST API 控制器。
+ *
+ * <p>提供目录树的常用操作接口，可通过配置项关闭。</p>
+ *
  * @author zhubn
  * @date 2026/4/2
  */
@@ -106,4 +107,3 @@ public class CatalogController {
         return catalogService.getSubtree(nodeId);
     }
 }
-

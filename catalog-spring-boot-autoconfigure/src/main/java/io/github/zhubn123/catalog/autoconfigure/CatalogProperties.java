@@ -1,16 +1,12 @@
-package io.github.zhubn123.catalog.autoconfigure;
+﻿package io.github.zhubn123.catalog.autoconfigure;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * 目录模块配置属�? * 
- * <p>可通过 application.yml 配置�?/p>
- * <pre>
- * catalog:
- *   table-prefix: catalog_    # 表名前缀
- *   enable-rest-api: true     # 是否启用REST API
- * </pre>
- * 
+ * 目录模块配置属性。
+ *
+ * <p>可通过 application.yml 中的 catalog 前缀进行配置。</p>
+ *
  * @author zhubn
  * @date 2026/4/2
  */
@@ -23,12 +19,13 @@ public class CatalogProperties {
     private String tablePrefix = "catalog_";
 
     /**
-     * 是否启用REST API
+     * 是否启用 REST API
      */
     private boolean enableRestApi = true;
 
     /**
-     * 是否在启动时初始化数据库�?     */
+     * 是否在启动时初始化数据库
+     */
     private boolean initSchema = false;
 
     public String getTablePrefix() {
@@ -55,4 +52,3 @@ public class CatalogProperties {
         this.initSchema = initSchema;
     }
 }
-

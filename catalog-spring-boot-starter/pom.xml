@@ -14,7 +14,7 @@
     <packaging>jar</packaging>
 
     <name>Catalog Spring Boot Starter</name>
-    <description>目录树管理Starter - 一键引入依�?/description>
+    <description>目录树管理 Starter - 一键引入依赖</description>
 
     <dependencies>
         <dependency>
@@ -24,4 +24,3 @@
     </dependencies>
 
 </project>
-

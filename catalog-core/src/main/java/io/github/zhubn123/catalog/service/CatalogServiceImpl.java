@@ -1,10 +1,10 @@
-package io.github.zhubn123.catalog.service;
+﻿package io.github.zhubn123.catalog.service;
 
-import com.berlin.catalog.domain.CatalogNode;
-import com.berlin.catalog.domain.CatalogRel;
-import com.berlin.catalog.exception.CatalogException;
-import com.berlin.catalog.mapper.CatalogNodeMapper;
-import com.berlin.catalog.mapper.CatalogRelMapper;
+import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogRel;
+import io.github.zhubn123.catalog.exception.CatalogException;
+import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
+import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +22,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 目录领域服务实现�? * 
+ * 目录领域服务实现。
+ *
  * @author zhubn
  * @date 2026/4/2
  */
@@ -566,4 +567,3 @@ public class CatalogServiceImpl implements CatalogService {
         }
     }
 }
-

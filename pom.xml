@@ -10,7 +10,7 @@
     <packaging>pom</packaging>
 
     <name>Catalog Spring Boot Starter</name>
-    <description>通用目录树管理组�?- Spring Boot Starter</description>
+    <description>通用目录树管理组件 - Spring Boot Starter</description>
     <url>https://github.com/zhubn123/catalog-spring-boot-starter</url>
 
     <licenses>
@@ -157,4 +157,3 @@
     </distributionManagement>
 
 </project>
-
