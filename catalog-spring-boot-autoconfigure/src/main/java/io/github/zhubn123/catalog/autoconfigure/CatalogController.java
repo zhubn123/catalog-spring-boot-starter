@@ -218,6 +218,14 @@ public class CatalogController {
     }
 
     /**
+     * 查询当前节点直接绑定的业务 ID。
+     */
+    @GetMapping("/nodeBindings")
+    public List<String> nodeBindings(Long nodeId, String bizType) {
+        return catalogService.getBizIds(requirePositiveId(nodeId, "nodeId"), requireText(bizType, "bizType"));
+    }
+
+    /**
      * 查询指定节点子树下绑定的业务 ID。
      */
     @GetMapping("/nodeBiz")

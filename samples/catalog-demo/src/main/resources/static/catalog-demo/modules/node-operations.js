@@ -1,164 +1,153 @@
+import { extractErrorMessage } from "../api.js";
+
 export function createNodeActions(context) {
     const {
         api,
         ElMessage,
         ElMessageBox,
+        activeTab,
+        selectedNode,
         addForm,
         batchAddForm,
-        moveForm,
         updateForm,
-        activeTab,
-        editDialogVisible,
-        editForm,
-        selectedNode,
-        loadTree
+        loadTree,
+        clearSelection,
+        syncFormsFromSelectedNode
     } = context;
 
     const addNode = async () => {
-        if (!addForm.name) {
-            ElMessage.warning("请输入节点名称");
+        const name = addForm.name.trim();
+        if (!name) {
+            ElMessage.warning("请先填写节点名称");
             return;
         }
+
         try {
-            const params = { name: addForm.name };
+            const payload = { name };
             if (addForm.parentId) {
-                params.parentId = addForm.parentId;
+                payload.parentId = Number(addForm.parentId);
             }
-            await api.postJson("/catalog/node", params);
-            ElMessage.success("添加成功");
+            await api.postJson("/catalog/node", payload);
+            ElMessage.success("节点创建成功");
             addForm.name = "";
             await loadTree();
         } catch (error) {
-            ElMessage.error("添加失败: " + (error.response?.data?.message || error.message));
+            ElMessage.error("节点创建失败: " + extractErrorMessage(error));
         }
     };
 
     const batchAddNodes = async () => {
-        if (!batchAddForm.names) {
-            ElMessage.warning("请输入节点名称");
+        const names = batchAddForm.names
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+        if (names.length === 0) {
+            ElMessage.warning("请至少输入一个有效节点名称");
             return;
         }
+
         try {
-            const names = batchAddForm.names.split(",").map((item) => item.trim()).filter(Boolean);
-            const params = { names };
+            const payload = { names };
             if (batchAddForm.parentId) {
-                params.parentId = batchAddForm.parentId;
+                payload.parentId = Number(batchAddForm.parentId);
             }
-            await api.postJson("/catalog/node/batch", params);
-            ElMessage.success(`批量添加 ${names.length} 个节点成功`);
+            await api.postJson("/catalog/node/batch", payload);
+            ElMessage.success(`已批量创建 ${names.length} 个节点`);
             batchAddForm.names = "";
             await loadTree();
         } catch (error) {
-            ElMessage.error("批量添加失败: " + (error.response?.data?.message || error.message));
+            ElMessage.error("批量创建失败: " + extractErrorMessage(error));
         }
     };
 
-    const moveNode = async () => {
-        if (!moveForm.nodeId) {
-            ElMessage.warning("请输入节点ID");
+    const updateSelectedNode = async () => {
+        if (!selectedNode.value) {
+            ElMessage.warning("请先选择一个节点");
             return;
         }
-        try {
-            const params = { nodeId: moveForm.nodeId };
-            if (moveForm.parentId) {
-                params.parentId = moveForm.parentId;
-            }
-            if (moveForm.targetIndex) {
-                params.targetIndex = moveForm.targetIndex;
-            }
-            await api.postJson("/catalog/move", params);
-            ElMessage.success("移动成功");
-            await loadTree();
-        } catch (error) {
-            ElMessage.error("移动失败: " + (error.response?.data?.message || error.message));
-        }
-    };
 
-    const updateNode = async () => {
-        if (!updateForm.nodeId) {
-            ElMessage.warning("请输入节点ID");
+        const payload = { nodeId: Number(updateForm.nodeId) };
+        if (updateForm.name && updateForm.name.trim()) {
+            payload.name = updateForm.name.trim();
+        }
+        if (updateForm.code && updateForm.code.trim()) {
+            payload.code = updateForm.code.trim();
+        }
+        if (updateForm.sort !== "" && updateForm.sort != null) {
+            payload.sort = Number(updateForm.sort);
+        }
+
+        if (Object.keys(payload).length === 1) {
+            ElMessage.warning("请至少修改一个字段再保存");
             return;
         }
+
         try {
-            const params = { nodeId: updateForm.nodeId };
-            if (updateForm.name) {
-                params.name = updateForm.name;
-            }
-            if (updateForm.code) {
-                params.code = updateForm.code;
-            }
-            if (updateForm.sort !== "") {
-                params.sort = updateForm.sort;
-            }
-            await api.postJson("/catalog/node/update", params);
-            ElMessage.success("更新成功");
+            await api.postJson("/catalog/node/update", payload);
+            ElMessage.success("节点更新成功");
             await loadTree();
         } catch (error) {
-            ElMessage.error("更新失败: " + (error.response?.data?.message || error.message));
+            ElMessage.error("节点更新失败: " + extractErrorMessage(error));
         }
     };
 
-    const handleDelete = async (node) => {
+    const handleDelete = async (node = selectedNode.value) => {
+        if (!node) {
+            ElMessage.warning("请先选择一个节点");
+            return;
+        }
+
         try {
             await ElMessageBox.confirm(
-                `确定删除节点 "${node.name}" 吗？\n如果是非叶子节点将递归删除子树。`,
+                `确定删除节点“${node.name}”及其子树吗？`,
                 "删除确认",
                 { type: "warning" }
             );
-            await api.postJson("/catalog/node/delete", { nodeId: node.id, recursive: true });
-            ElMessage.success("删除成功");
-            selectedNode.value = null;
+            await api.postJson("/catalog/node/delete", {
+                nodeId: node.id,
+                recursive: true
+            });
+            ElMessage.success("节点删除成功");
+            if (selectedNode.value && String(selectedNode.value.id) === String(node.id)) {
+                clearSelection();
+                await loadTree({ preserveSelection: false });
+                return;
+            }
             await loadTree();
         } catch (error) {
             if (error !== "cancel") {
-                ElMessage.error("删除失败: " + (error.response?.data?.message || error.message));
+                ElMessage.error("节点删除失败: " + extractErrorMessage(error));
             }
         }
     };
 
     const showAddRootDialog = () => {
-        addForm.parentId = "";
         activeTab.value = "node";
+        addForm.parentId = "";
+        batchAddForm.parentId = "";
     };
 
     const showAddChildDialog = (node) => {
-        addForm.parentId = node.id;
+        // 左侧点“新增子节点”后，右侧表单直接切到当前节点上下文继续编辑。
+        syncFormsFromSelectedNode(node);
         activeTab.value = "node";
+        addForm.parentId = String(node.id);
+        batchAddForm.parentId = String(node.id);
     };
 
     const showEditDialog = (node) => {
-        editForm.id = node.id;
-        editForm.name = node.name;
-        editForm.code = node.code || "";
-        editForm.sort = node.sort;
-        editDialogVisible.value = true;
-    };
-
-    const saveEdit = async () => {
-        try {
-            await api.postJson("/catalog/node/update", {
-                nodeId: editForm.id,
-                name: editForm.name,
-                code: editForm.code,
-                sort: editForm.sort
-            });
-            ElMessage.success("保存成功");
-            editDialogVisible.value = false;
-            await loadTree();
-        } catch (error) {
-            ElMessage.error("保存失败: " + (error.response?.data?.message || error.message));
-        }
+        syncFormsFromSelectedNode(node);
+        activeTab.value = "node";
     };
 
     return {
         addNode,
         batchAddNodes,
-        moveNode,
-        updateNode,
+        updateSelectedNode,
         handleDelete,
         showAddRootDialog,
         showAddChildDialog,
-        showEditDialog,
-        saveEdit
+        showEditDialog
     };
 }

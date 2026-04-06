@@ -1,7 +1,10 @@
+import { extractErrorMessage, unwrapResultData } from "../api.js";
+
 export function createBusinessActions(context) {
     const {
         api,
         ElMessage,
+        selectedNode,
         contractForm,
         contractNodeId,
         attachForm,
@@ -17,41 +20,60 @@ export function createBusinessActions(context) {
     };
 
     const createContractCatalog = async () => {
-        if (!contractForm.contractId || !contractForm.contractName) {
-            ElMessage.warning("请填写合同ID和名称");
+        const contractId = contractForm.contractId.trim();
+        const contractName = contractForm.contractName.trim();
+        if (!contractId || !contractName) {
+            ElMessage.warning("请先填写合同 ID 和合同名称");
             return;
         }
+
         try {
-            const payload = {
+            // 业务示例只负责演示“合同目录 + 交付物叶子节点”的典型链路。
+            const result = await api.put("/contract", {
                 contract: {
-                    contractId: contractForm.contractId,
-                    contractName: contractForm.contractName
+                    contractId,
+                    contractName
                 },
-                items: contractForm.items.filter((item) => item.deliveryId && item.deliveryType)
-            };
-            const result = await api.put("/contract", payload);
-            contractNodeId.value = result.data;
-            ElMessage.success(`创建成功，合同节点ID: ${result.data}`);
-            await loadTree();
+                items: contractForm.items
+                    .map((item) => ({
+                        deliveryId: item.deliveryId.trim(),
+                        deliveryType: item.deliveryType.trim()
+                    }))
+                    .filter((item) => item.deliveryId && item.deliveryType)
+            });
+            const createdNodeId = unwrapResultData(result);
+            contractNodeId.value = createdNodeId;
+            attachForm.contractNodeId = String(createdNodeId ?? "");
+            ElMessage.success(`合同目录创建成功，节点 ID：${createdNodeId}`);
+            await loadTree({ preserveSelection: false });
         } catch (error) {
-            ElMessage.error("创建失败: " + (error.response?.data?.message || error.message));
+            ElMessage.error("创建合同目录失败: " + extractErrorMessage(error));
         }
+    };
+
+    const useSelectedNodeAsProjectTarget = () => {
+        if (!selectedNode.value) {
+            ElMessage.warning("请先在左侧选择一个项目目录节点");
+            return;
+        }
+        attachForm.projectNodeId = String(selectedNode.value.id);
     };
 
     const attachContractToProject = async () => {
         if (!attachForm.projectNodeId || !attachForm.contractNodeId) {
-            ElMessage.warning("请填写项目节点ID和合同节点ID");
+            ElMessage.warning("请先填写项目节点 ID 和合同节点 ID");
             return;
         }
+
         try {
             await api.postJson("/project/contracts/attach", {
-                projectNodeId: attachForm.projectNodeId,
-                contractNodeId: attachForm.contractNodeId
+                projectNodeId: Number(attachForm.projectNodeId),
+                contractNodeId: Number(attachForm.contractNodeId)
             });
-            ElMessage.success("挂载成功");
-            await loadTree();
+            ElMessage.success("合同目录挂载成功");
+            await loadTree({ preserveSelection: false });
         } catch (error) {
-            ElMessage.error("挂载失败: " + (error.response?.data?.message || error.message));
+            ElMessage.error("挂载合同目录失败: " + extractErrorMessage(error));
         }
     };
 
@@ -59,6 +81,7 @@ export function createBusinessActions(context) {
         addDeliveryItem,
         removeDeliveryItem,
         createContractCatalog,
+        useSelectedNodeAsProjectTarget,
         attachContractToProject
     };
 }

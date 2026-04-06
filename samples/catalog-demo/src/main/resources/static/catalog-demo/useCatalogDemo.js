@@ -1,14 +1,15 @@
-import { createApi } from "./api.js";
-import { buildTree, isLeaf } from "./tree-utils.js";
+import { createApi, extractErrorMessage } from "./api.js";
+import { findNodeById, isLeaf, normalizeTree } from "./tree-utils.js";
 import { createNodeActions } from "./modules/node-operations.js";
 import { createBindingActions } from "./modules/binding-operations.js";
 import { createQueryActions } from "./modules/query-operations.js";
 import { createBusinessActions } from "./modules/business-operations.js";
 
-const { ref, reactive, onMounted } = Vue;
+const { ref, reactive, computed, watch, onMounted } = Vue;
 const { ElMessage } = ElementPlus;
 
 function resolveApiBase() {
+    // 从 8080 打开时走同源；直接预览静态文件时回退到本地后端。
     if (window.location.port === "8080") {
         return window.location.origin;
     }
@@ -20,14 +21,18 @@ const API_BASE = resolveApiBase();
 export function createCatalogDemoApp() {
     return {
         setup() {
+            // 左侧目录树和右侧详情共享一份选中节点状态，避免各区域各自维护。
             const treeRef = ref(null);
             const treeData = ref([]);
             const selectedNode = ref(null);
             const activeTab = ref("node");
             const apiLogs = ref([]);
-            const nodeBindings = ref([]);
+            const directBindings = ref([]);
+            const bindingListBizType = ref("deliver");
+            const queryTreeData = ref([]);
+            const queryTreeTitle = ref("");
+            const queryTreeSummary = ref("");
             const contractNodeId = ref("");
-            const editDialogVisible = ref(false);
 
             const treeProps = {
                 children: "children",
@@ -36,11 +41,9 @@ export function createCatalogDemoApp() {
 
             const addForm = reactive({ parentId: "", name: "" });
             const batchAddForm = reactive({ parentId: "", names: "" });
-            const moveForm = reactive({ nodeId: "", parentId: "", targetIndex: "" });
             const updateForm = reactive({ nodeId: "", name: "", code: "", sort: "" });
             const bindForm = reactive({ nodeId: "", bizId: "", bizType: "deliver" });
             const batchBindForm = reactive({ nodeIds: "", bizIds: "", bizType: "deliver" });
-            const unbindForm = reactive({ nodeId: "", bizId: "", bizType: "deliver" });
 
             const queryBizPathForm = reactive({ bizId: "", bizType: "deliver" });
             const bizPathResult = ref([]);
@@ -49,9 +52,7 @@ export function createCatalogDemoApp() {
             const queryNodeBizForm = reactive({ nodeId: "", bizType: "deliver" });
             const nodeBizResult = ref([]);
             const queryBizTreeForm = reactive({ bizId: "", bizType: "deliver" });
-            const bizTreeResult = ref([]);
             const querySubtreeForm = reactive({ nodeId: "" });
-            const subtreeResult = ref([]);
 
             const contractForm = reactive({
                 contractId: "",
@@ -59,12 +60,13 @@ export function createCatalogDemoApp() {
                 items: [{ deliveryId: "", deliveryType: "" }]
             });
             const attachForm = reactive({ projectNodeId: "", contractNodeId: "" });
-            const editForm = reactive({ id: "", name: "", code: "", sort: null });
+
+            const selectedNodeId = computed(() => selectedNode.value?.id ?? "");
 
             const logApi = (method, url, success, status) => {
                 const time = new Date().toLocaleTimeString();
                 apiLogs.value.unshift({ method, url, success, status, time });
-                if (apiLogs.value.length > 50) {
+                if (apiLogs.value.length > 80) {
                     apiLogs.value.pop();
                 }
             };
@@ -75,43 +77,102 @@ export function createCatalogDemoApp() {
 
             const api = createApi({ baseUrl: API_BASE, logApi });
 
-            const loadTree = async () => {
+            const clearQueryTree = () => {
+                queryTreeData.value = [];
+                queryTreeTitle.value = "";
+                queryTreeSummary.value = "";
+            };
+
+            const clearSelection = () => {
+                selectedNode.value = null;
+                directBindings.value = [];
+                addForm.parentId = "";
+                batchAddForm.parentId = "";
+                updateForm.nodeId = "";
+                updateForm.name = "";
+                updateForm.code = "";
+                updateForm.sort = "";
+                bindForm.nodeId = "";
+                queryNodeBizForm.nodeId = "";
+                querySubtreeForm.nodeId = "";
+            };
+
+            const syncFormsFromSelectedNode = (node) => {
+                if (!node) {
+                    clearSelection();
+                    return;
+                }
+
+                selectedNode.value = node;
+                addForm.parentId = String(node.id ?? "");
+                batchAddForm.parentId = String(node.id ?? "");
+                updateForm.nodeId = String(node.id ?? "");
+                updateForm.name = node.name || "";
+                updateForm.code = node.code || "";
+                updateForm.sort = node.sort ?? "";
+                bindForm.nodeId = String(node.id ?? "");
+                queryNodeBizForm.nodeId = String(node.id ?? "");
+                querySubtreeForm.nodeId = String(node.id ?? "");
+            };
+
+            const loadDirectBindings = async (nodeId = selectedNodeId.value) => {
+                if (!nodeId) {
+                    directBindings.value = [];
+                    return;
+                }
                 try {
-                    const nodes = await api.get("/catalog/nodes");
-                    treeData.value = buildTree(nodes);
+                    // 这里查的是当前节点的直接绑定，不再混用子树聚合查询。
+                    const bizIds = await api.get(
+                        `/catalog/nodeBindings?nodeId=${nodeId}&bizType=${bindingListBizType.value}`
+                    );
+                    directBindings.value = (bizIds || []).map((bizId) => ({
+                        bizId,
+                        bizType: bindingListBizType.value
+                    }));
                 } catch (error) {
-                    ElMessage.error("加载树失败: " + (error.response?.data?.message || error.message));
+                    directBindings.value = [];
+                    ElMessage.error("加载当前节点绑定失败: " + extractErrorMessage(error));
                 }
             };
 
-            const loadNodeBindings = async (nodeId) => {
+            const loadTree = async ({ preserveSelection = true } = {}) => {
+                const previousNodeId = preserveSelection ? selectedNodeId.value : "";
                 try {
-                    const bizIds = await api.get(`/catalog/nodeBiz?nodeId=${nodeId}&bizType=deliver`);
-                    nodeBindings.value = bizIds.map((bizId) => ({ bizId, bizType: "deliver" }));
-                } catch (_error) {
-                    nodeBindings.value = [];
+                    const tree = normalizeTree(await api.get("/catalog/tree"));
+                    treeData.value = tree;
+
+                    if (previousNodeId) {
+                        const matchedNode = findNodeById(tree, previousNodeId);
+                        if (matchedNode) {
+                            syncFormsFromSelectedNode(matchedNode);
+                            await loadDirectBindings(matchedNode.id);
+                            return;
+                        }
+                    }
+
+                    if (previousNodeId) {
+                        // 原选中节点如果已经不在新树里，右侧表单也要一起清掉。
+                        clearSelection();
+                    } else if (tree.length === 0) {
+                        clearSelection();
+                    } else if (!preserveSelection) {
+                        clearSelection();
+                    }
+                } catch (error) {
+                    ElMessage.error("加载目录树失败: " + extractErrorMessage(error));
                 }
             };
 
             const handleNodeClick = (node) => {
-                selectedNode.value = node;
-                addForm.parentId = node.id;
-                updateForm.nodeId = node.id;
-                updateForm.name = node.name;
-                updateForm.code = node.code || "";
-                bindForm.nodeId = node.id;
-                queryNodeBizForm.nodeId = node.id;
-                loadNodeBindings(node.id);
+                syncFormsFromSelectedNode(node);
+                loadDirectBindings(node.id);
             };
 
-            const allowDrop = (_draggingNode, dropNode, type) => {
-                return type !== "inner" || !isLeaf(dropNode.data);
-            };
-
+            const allowDrop = (_draggingNode, dropNode, type) => type !== "inner" || !isLeaf(dropNode.data);
             const allowDrag = () => true;
 
             const handleDrop = async (draggingNode, dropNode, dropType) => {
-                const dragId = draggingNode.data.id;
+                const draggingNodeId = draggingNode.data.id;
                 let targetParentId = null;
                 let targetIndex = null;
 
@@ -125,52 +186,62 @@ export function createCatalogDemoApp() {
                 }
 
                 try {
-                    const params = { nodeId: dragId };
+                    const payload = { nodeId: draggingNodeId };
                     if (targetParentId) {
-                        params.parentId = targetParentId;
+                        payload.parentId = targetParentId;
                     }
                     if (targetIndex !== null && targetIndex >= 0) {
-                        params.targetIndex = targetIndex;
+                        payload.targetIndex = targetIndex;
                     }
-                    await api.post("/catalog/move", params);
-                    ElMessage.success("移动成功");
+                    await api.postJson("/catalog/move", payload);
+                    ElMessage.success("节点移动成功");
                     await loadTree();
                 } catch (error) {
-                    ElMessage.error("移动失败: " + (error.response?.data?.message || error.message));
+                    ElMessage.error("节点移动失败: " + extractErrorMessage(error));
                     await loadTree();
                 }
             };
 
             const expandAll = () => {
                 const nodes = treeRef.value?.store?.nodesMap;
-                if (nodes) {
-                    Object.values(nodes).forEach((node) => {
-                        node.expanded = true;
-                    });
+                if (!nodes) {
+                    return;
                 }
+                Object.values(nodes).forEach((node) => {
+                    node.expanded = true;
+                });
             };
 
             const collapseAll = () => {
                 const nodes = treeRef.value?.store?.nodesMap;
-                if (nodes) {
-                    Object.values(nodes).forEach((node) => {
-                        node.expanded = false;
-                    });
+                if (!nodes) {
+                    return;
                 }
+                Object.values(nodes).forEach((node) => {
+                    node.expanded = false;
+                });
             };
+
+            watch(bindingListBizType, async () => {
+                if (selectedNode.value) {
+                    await loadDirectBindings(selectedNode.value.id);
+                }
+            });
 
             const sharedContext = {
                 api,
                 ElMessage,
-                selectedNode,
                 activeTab,
+                selectedNode,
+                selectedNodeId,
+                treeData,
                 addForm,
                 batchAddForm,
-                moveForm,
                 updateForm,
                 bindForm,
                 batchBindForm,
-                unbindForm,
+                directBindings,
+                bindingListBizType,
                 queryBizPathForm,
                 bizPathResult,
                 queryBizNodesForm,
@@ -178,16 +249,18 @@ export function createCatalogDemoApp() {
                 queryNodeBizForm,
                 nodeBizResult,
                 queryBizTreeForm,
-                bizTreeResult,
                 querySubtreeForm,
-                subtreeResult,
+                queryTreeData,
+                queryTreeTitle,
+                queryTreeSummary,
                 contractForm,
                 contractNodeId,
                 attachForm,
-                editDialogVisible,
-                editForm,
                 loadTree,
-                loadNodeBindings
+                loadDirectBindings,
+                clearQueryTree,
+                clearSelection,
+                syncFormsFromSelectedNode
             };
 
             const nodeActions = createNodeActions({
@@ -199,7 +272,7 @@ export function createCatalogDemoApp() {
             const businessActions = createBusinessActions(sharedContext);
 
             onMounted(() => {
-                loadTree();
+                loadTree({ preserveSelection: false });
             });
 
             return {
@@ -207,18 +280,20 @@ export function createCatalogDemoApp() {
                 treeData,
                 treeProps,
                 selectedNode,
+                selectedNodeId,
                 activeTab,
                 apiLogs,
-                nodeBindings,
+                directBindings,
+                bindingListBizType,
+                queryTreeData,
+                queryTreeTitle,
+                queryTreeSummary,
                 contractNodeId,
-                editDialogVisible,
                 addForm,
                 batchAddForm,
-                moveForm,
                 updateForm,
                 bindForm,
                 batchBindForm,
-                unbindForm,
                 queryBizPathForm,
                 bizPathResult,
                 queryBizNodesForm,
@@ -226,14 +301,12 @@ export function createCatalogDemoApp() {
                 queryNodeBizForm,
                 nodeBizResult,
                 queryBizTreeForm,
-                bizTreeResult,
                 querySubtreeForm,
-                subtreeResult,
                 contractForm,
                 attachForm,
-                editForm,
                 clearApiLogs,
                 loadTree,
+                loadDirectBindings,
                 isLeaf,
                 handleNodeClick,
                 allowDrop,

@@ -109,6 +109,13 @@ class CatalogControllerTest {
     }
 
     @Test
+    void nodeBindingsUsesDirectBindingEndpoint() {
+        controller.nodeBindings(9L, "deliver");
+
+        verify(catalogService).getBizIds(9L, "deliver");
+    }
+
+    @Test
     void subtreeReturnsNestedTreeStructure() {
         CatalogTreeNode root = new CatalogTreeNode();
         root.setId(9L);
