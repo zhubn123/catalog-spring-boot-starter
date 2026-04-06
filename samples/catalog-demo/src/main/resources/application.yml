@@ -3,9 +3,10 @@ server:
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: 123456
+    # 优先从环境变量读取本地数据库配置，避免把个人开发环境账号密码写进仓库。
+    url: ${CATALOG_DEMO_DB_URL:jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai}
+    username: ${CATALOG_DEMO_DB_USERNAME:root}
+    password: ${CATALOG_DEMO_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 mybatis:

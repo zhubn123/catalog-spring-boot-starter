@@ -60,13 +60,15 @@ CREATE TABLE catalog_rel (
 ```yaml
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/your_db
-    username: root
-    password: root
+    url: ${CATALOG_DEMO_DB_URL:jdbc:mysql://localhost:3306/your_db}
+    username: ${CATALOG_DEMO_DB_USERNAME:root}
+    password: ${CATALOG_DEMO_DB_PASSWORD:}
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
 ```
+
+> sample 工程推荐通过环境变量覆盖本地数据库配置，避免把个人开发环境账号密码直接写进仓库。
 
 ### 4. 使用服务
 

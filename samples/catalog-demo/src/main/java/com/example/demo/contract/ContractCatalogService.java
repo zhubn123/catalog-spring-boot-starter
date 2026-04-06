@@ -3,7 +3,6 @@ package com.example.demo.contract;
 import com.example.demo.contract.entity.ContractBo;
 import com.example.demo.contract.entity.DeliveryItem;
 import io.github.zhubn123.catalog.service.CatalogService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -14,42 +13,27 @@ import java.util.Objects;
 /**
  * 合同目录编排服务。
  *
- * <p>负责创建合同目录、创建交付物子目录，并在项目创建后将合同目录挂载到项目下。</p>
- *
- * @author zhubn
- * @date 2026/4/1
- * @see CatalogService 通用目录服务
- * @see ContractBo 合同业务对象
+ * <p>负责创建合同目录、创建交付物子目录，以及在项目创建后将合同目录挂载到项目下。</p>
  */
 @Service
 public class ContractCatalogService {
 
     /**
-     * 合同目录的初始父节点 ID。
+     * 合同目录默认先创建在根目录下，挂载到项目属于后续动作。
      */
     private static final Long INITIAL_CONTRACT_PARENT_ID = -1L;
 
-    /**
-     * 交付物业务类型。
-     */
     private static final String BIZ_TYPE_DELIVER = "deliver";
-
-    /**
-     * 合同业务类型。
-     */
     private static final String BIZ_TYPE_CONTRACT = "contract";
 
-    /**
-     * 通用目录服务。
-     */
-    @Autowired
-    private CatalogService catalogService;
+    private final CatalogService catalogService;
+
+    public ContractCatalogService(CatalogService catalogService) {
+        this.catalogService = catalogService;
+    }
 
     /**
      * 初始化合同目录并返回合同节点 ID。
-     *
-     * @param contractBo 合同业务对象，包含合同信息和交付物列表
-     * @return 合同节点 ID
      */
     @Transactional(rollbackFor = Exception.class)
     public Long initContractCatalog(ContractBo contractBo) {
@@ -77,6 +61,7 @@ public class ContractCatalogService {
         List<DeliveryItem> validItems = items.stream()
                 .filter(Objects::nonNull)
                 .filter(item -> StringUtils.hasText(item.getDeliveryType()))
+                .filter(item -> StringUtils.hasText(item.getDeliveryId()))
                 .toList();
         if (validItems.isEmpty()) {
             return contractNodeId;
@@ -101,9 +86,6 @@ public class ContractCatalogService {
 
     /**
      * 将合同目录挂载到项目目录下。
-     *
-     * @param projectNodeId 项目节点 ID
-     * @param contractNodeId 合同节点 ID
      */
     @Transactional(rollbackFor = Exception.class)
     public void bindContractToProject(Long projectNodeId, Long contractNodeId) {
@@ -117,9 +99,6 @@ public class ContractCatalogService {
         catalogService.moveNode(contractNodeId, projectNodeId);
     }
 
-    /**
-     * 去除首尾空白，空字符串返回 null。
-     */
     private String trimToNull(String value) {
         if (!StringUtils.hasText(value)) {
             return null;

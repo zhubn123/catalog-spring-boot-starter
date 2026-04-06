@@ -44,7 +44,7 @@ export function createBusinessActions(context) {
             return;
         }
         try {
-            await api.post("/project/bindContract", {
+            await api.postJson("/project/contracts/attach", {
                 projectNodeId: attachForm.projectNodeId,
                 contractNodeId: attachForm.contractNodeId
             });

@@ -2,53 +2,46 @@ package com.example.demo.project;
 
 import com.example.demo.common.Result;
 import com.example.demo.contract.ContractCatalogService;
-import com.example.demo.contract.entity.ContractBo;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import lombok.Data;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 项目目录控制器。
+ * 项目目录演示接口。
  *
- * <p>用于兼容历史接口，并提供合同目录挂载到项目目录下的能力。</p>
- *
- * @author zhubn
- * @date 2026/4/1
- * @see ContractCatalogService 合同目录编排服务
+ * <p>sample 中项目侧只保留“挂载合同目录”这一项职责，合同目录创建统一放到
+ * {@code /contract} 侧处理，避免两个入口都承担创建能力。</p>
  */
 @RestController
 @RequestMapping("/project")
 public class ProjectController {
 
-    /**
-     * 合同目录编排服务。
-     */
-    @Autowired
-    private ContractCatalogService contractCatalogService;
+    private final ContractCatalogService contractCatalogService;
 
-    /**
-     * 创建合同目录的兼容端点。
-     *
-     * @param contractBo 合同业务对象
-     * @return 操作结果，data 字段为合同节点 ID
-     */
-    // @Operation(summary = "创建合同目录", description = "兼容端点，功能与 PUT /contract 相同")
-    @PutMapping
-    public Result<?> bindContract(@RequestBody ContractBo contractBo) {
-        Long contractNodeId = contractCatalogService.initContractCatalog(contractBo);
-        return Result.success(contractNodeId);
+    public ProjectController(ContractCatalogService contractCatalogService) {
+        this.contractCatalogService = contractCatalogService;
     }
 
     /**
-     * 将合同目录挂载到项目目录下。
+     * 将已创建好的合同目录挂载到项目目录下。
      *
-     * @param projectNodeId 项目节点 ID
-     * @param contractNodeId 合同节点 ID
-     * @return 操作结果
+     * <p>推荐使用 {@code /project/contracts/attach}，旧的 {@code /project/bindContract}
+     * 作为兼容别名保留。</p>
      */
-    // @Operation(summary = "挂载合同到项目", description = "将合同文件夹移动到项目文件夹下")
-    @PostMapping("/bindContract")
-    public Result<?> bindContractToProject(Long projectNodeId, Long contractNodeId) {
-        contractCatalogService.bindContractToProject(projectNodeId, contractNodeId);
+    @PostMapping({"/contracts/attach", "/bindContract"})
+    public Result<?> attachContractToProject(@RequestBody AttachContractRequest request) {
+        contractCatalogService.bindContractToProject(request.getProjectNodeId(), request.getContractNodeId());
         return Result.success();
+    }
+
+    /**
+     * 合同目录挂载请求。
+     */
+    @Data
+    public static class AttachContractRequest {
+        private Long projectNodeId;
+        private Long contractNodeId;
     }
 }
