@@ -1,6 +1,7 @@
 package io.github.zhubn123.catalog.autoconfigure;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.exception.CatalogException;
 import io.github.zhubn123.catalog.service.CatalogService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,7 +39,7 @@ public class CatalogController {
     public Long addNode(@RequestBody(required = false) AddNodeRequest request, Long parentId, String name) {
         Long effectiveParentId = request != null && request.parentId() != null ? request.parentId() : parentId;
         String effectiveName = request != null && request.name() != null ? request.name() : name;
-        return catalogService.addNode(effectiveParentId, effectiveName);
+        return catalogService.addNode(effectiveParentId, requireText(effectiveName, "name"));
     }
 
     /**
@@ -52,10 +53,8 @@ public class CatalogController {
         List<String> effectiveNames = request != null && request.names() != null
                 ? normalizeStringList(request.names())
                 : splitCsv(names);
-        if (effectiveNames.isEmpty()) {
-            return List.of();
-        }
-        return catalogService.batchAddNode(effectiveParentId, effectiveNames.toArray(String[]::new));
+        List<String> validatedNames = requireNonEmptyStrings(effectiveNames, "names");
+        return catalogService.batchAddNode(effectiveParentId, validatedNames.toArray(String[]::new));
     }
 
     /**
@@ -66,7 +65,11 @@ public class CatalogController {
         Long effectiveNodeId = request != null && request.nodeId() != null ? request.nodeId() : nodeId;
         Long effectiveParentId = request != null && request.parentId() != null ? request.parentId() : parentId;
         Integer effectiveTargetIndex = request != null && request.targetIndex() != null ? request.targetIndex() : targetIndex;
-        catalogService.moveNode(effectiveNodeId, effectiveParentId, effectiveTargetIndex);
+        catalogService.moveNode(
+                requirePositiveId(effectiveNodeId, "nodeId"),
+                effectiveParentId,
+                requireNonNegative(effectiveTargetIndex, "targetIndex")
+        );
     }
 
     /**
@@ -83,10 +86,16 @@ public class CatalogController {
             Integer sort
     ) {
         Long effectiveNodeId = request != null && request.nodeId() != null ? request.nodeId() : nodeId;
-        String effectiveName = request != null && request.name() != null ? request.name() : name;
-        String effectiveCode = request != null && request.code() != null ? request.code() : code;
-        Integer effectiveSort = request != null && request.sort() != null ? request.sort() : sort;
-        catalogService.updateNode(effectiveNodeId, effectiveName, effectiveCode, effectiveSort);
+        String effectiveName = trimToNull(request != null && request.name() != null ? request.name() : name);
+        String effectiveCode = trimToNull(request != null && request.code() != null ? request.code() : code);
+        Integer effectiveSort = requireNonNegative(
+                request != null && request.sort() != null ? request.sort() : sort,
+                "sort"
+        );
+        if (effectiveName == null && effectiveCode == null && effectiveSort == null) {
+            throw CatalogException.invalidArgument("至少提供一个可更新字段");
+        }
+        catalogService.updateNode(requirePositiveId(effectiveNodeId, "nodeId"), effectiveName, effectiveCode, effectiveSort);
     }
 
     /**
@@ -98,7 +107,7 @@ public class CatalogController {
     public void deleteNode(@RequestBody(required = false) DeleteNodeRequest request, Long nodeId, Boolean recursive) {
         Long effectiveNodeId = request != null && request.nodeId() != null ? request.nodeId() : nodeId;
         Boolean effectiveRecursive = request != null && request.recursive() != null ? request.recursive() : recursive;
-        catalogService.deleteNode(effectiveNodeId, Boolean.TRUE.equals(effectiveRecursive));
+        catalogService.deleteNode(requirePositiveId(effectiveNodeId, "nodeId"), Boolean.TRUE.equals(effectiveRecursive));
     }
 
     /**
@@ -106,7 +115,11 @@ public class CatalogController {
      */
     @PostMapping("/bind")
     public void bind(@RequestBody(required = false) BindRequest request, Long nodeId, String bizId, String bizType) {
-        catalogService.bind(resolveNodeId(request, nodeId), resolveBizId(request, bizId), resolveBizType(request, bizType));
+        catalogService.bind(
+                requirePositiveId(resolveNodeId(request, nodeId), "nodeId"),
+                requireText(resolveBizId(request, bizId), "bizId"),
+                requireText(resolveBizType(request, bizType), "bizType")
+        );
     }
 
     /**
@@ -121,12 +134,13 @@ public class CatalogController {
         List<Long> nodeIdList = request != null && request.nodeIds() != null
                 ? normalizeLongList(request.nodeIds())
                 : parseCsvLongList(nodeIds);
-        if (nodeIdList.isEmpty()) {
-            return;
-        }
         String effectiveBizId = request != null && request.bizId() != null ? request.bizId() : bizId;
         String effectiveBizType = request != null && request.bizType() != null ? request.bizType() : bizType;
-        catalogService.batchBind(nodeIdList, effectiveBizId, effectiveBizType);
+        catalogService.batchBind(
+                requirePositiveIds(nodeIdList, "nodeIds"),
+                requireText(effectiveBizId, "bizId"),
+                requireText(effectiveBizType, "bizType")
+        );
     }
 
     /**
@@ -148,10 +162,10 @@ public class CatalogController {
                 ? normalizeStringList(request.bizIds())
                 : splitCsv(bizIds);
         String effectiveBizType = request != null && request.bizType() != null ? request.bizType() : bizType;
-        if (nodeIdList.isEmpty() || bizIdList.isEmpty()) {
-            return;
-        }
-        catalogService.batchBindByBizIds(nodeIdList, bizIdList, effectiveBizType);
+        List<Long> validatedNodeIds = requirePositiveIds(nodeIdList, "nodeIds");
+        List<String> validatedBizIds = requireNonEmptyStrings(bizIdList, "bizIds");
+        requireSameSize(validatedNodeIds, "nodeIds", validatedBizIds, "bizIds");
+        catalogService.batchBindByBizIds(validatedNodeIds, validatedBizIds, requireText(effectiveBizType, "bizType"));
     }
 
     /**
@@ -159,7 +173,11 @@ public class CatalogController {
      */
     @PostMapping("/unbind")
     public void unbind(@RequestBody(required = false) BindRequest request, Long nodeId, String bizId, String bizType) {
-        catalogService.unbind(resolveNodeId(request, nodeId), resolveBizId(request, bizId), resolveBizType(request, bizType));
+        catalogService.unbind(
+                requirePositiveId(resolveNodeId(request, nodeId), "nodeId"),
+                requireText(resolveBizId(request, bizId), "bizId"),
+                requireText(resolveBizType(request, bizType), "bizType")
+        );
     }
 
     /**
@@ -186,7 +204,7 @@ public class CatalogController {
      */
     @GetMapping("/bizPath")
     public List<CatalogNode> bizPath(String bizId, String bizType) {
-        return catalogService.getBizPath(bizId, bizType);
+        return catalogService.getBizPath(requireText(bizId, "bizId"), requireText(bizType, "bizType"));
     }
 
     /**
@@ -194,7 +212,7 @@ public class CatalogController {
      */
     @GetMapping("/bizNodes")
     public List<Long> bizNodes(String bizId, String bizType) {
-        return catalogService.getNodeIds(bizId, bizType);
+        return catalogService.getNodeIds(requireText(bizId, "bizId"), requireText(bizType, "bizType"));
     }
 
     /**
@@ -202,7 +220,7 @@ public class CatalogController {
      */
     @GetMapping("/nodeBiz")
     public List<String> nodeBiz(Long nodeId, String bizType) {
-        return catalogService.getBizIdsByNodeTree(nodeId, bizType);
+        return catalogService.getBizIdsByNodeTree(requirePositiveId(nodeId, "nodeId"), requireText(bizType, "bizType"));
     }
 
     /**
@@ -210,7 +228,7 @@ public class CatalogController {
      */
     @GetMapping("/bizTreeNodes")
     public List<CatalogNode> bizTreeNodes(String bizId, String bizType) {
-        return catalogService.listBizRelatedNodes(bizId, bizType);
+        return catalogService.listBizRelatedNodes(requireText(bizId, "bizId"), requireText(bizType, "bizType"));
     }
 
     /**
@@ -219,7 +237,7 @@ public class CatalogController {
     @GetMapping("/bizTree")
     @Deprecated
     public List<CatalogNode> bizTree(String bizId, String bizType) {
-        return catalogService.listBizRelatedNodes(bizId, bizType);
+        return bizTreeNodes(bizId, bizType);
     }
 
     /**
@@ -227,7 +245,7 @@ public class CatalogController {
      */
     @GetMapping("/subtreeNodes")
     public List<CatalogNode> subtreeNodes(Long nodeId) {
-        return catalogService.listSubtreeNodes(nodeId);
+        return catalogService.listSubtreeNodes(requirePositiveId(nodeId, "nodeId"));
     }
 
     /**
@@ -236,7 +254,7 @@ public class CatalogController {
     @GetMapping("/subtree")
     @Deprecated
     public List<CatalogNode> subtree(Long nodeId) {
-        return catalogService.listSubtreeNodes(nodeId);
+        return subtreeNodes(nodeId);
     }
 
     /**
@@ -265,7 +283,13 @@ public class CatalogController {
      */
     private List<Long> parseCsvLongList(String value) {
         return splitCsv(value).stream()
-                .map(Long::valueOf)
+                .map(item -> {
+                    try {
+                        return Long.valueOf(item);
+                    } catch (NumberFormatException exception) {
+                        throw CatalogException.invalidArgument("nodeIds 中包含无效数字: " + item);
+                    }
+                })
                 .toList();
     }
 
@@ -276,6 +300,77 @@ public class CatalogController {
         return values.stream()
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    /**
+     * 对兼容 query/form 的写接口统一做必填校验，避免出现“请求进来了但什么都没做”的静默行为。
+     */
+    private Long requirePositiveId(Long value, String fieldName) {
+        if (value == null || value <= 0) {
+            throw CatalogException.invalidArgument(fieldName + " 不能为空且必须大于 0");
+        }
+        return value;
+    }
+
+    /**
+     * 统一收口文本参数校验，让 body 与旧 query/form 参数返回一致的错误提示。
+     */
+    private String requireText(String value, String fieldName) {
+        String normalizedValue = trimToNull(value);
+        if (normalizedValue == null) {
+            throw CatalogException.invalidArgument(fieldName + " 不能为空");
+        }
+        return normalizedValue;
+    }
+
+    /**
+     * 批量接口至少要有一条有效数据，否则前端很难区分“空操作成功”还是“参数漏传”。
+     */
+    private List<String> requireNonEmptyStrings(List<String> values, String fieldName) {
+        if (values == null || values.isEmpty()) {
+            throw CatalogException.invalidArgument(fieldName + " 不能为空");
+        }
+        return values;
+    }
+
+    /**
+     * 节点 ID 列表既要非空，也要保证每一项都是合法正整数。
+     */
+    private List<Long> requirePositiveIds(List<Long> values, String fieldName) {
+        if (values == null || values.isEmpty()) {
+            throw CatalogException.invalidArgument(fieldName + " 不能为空");
+        }
+        boolean hasInvalidValue = values.stream().anyMatch(value -> value == null || value <= 0);
+        if (hasInvalidValue) {
+            throw CatalogException.invalidArgument(fieldName + " 中存在无效节点 ID");
+        }
+        return values;
+    }
+
+    /**
+     * 成对批量绑定要求两个数组严格一一对应，避免 service 层再猜测调用方意图。
+     */
+    private void requireSameSize(List<?> left, String leftName, List<?> right, String rightName) {
+        if (left.size() != right.size()) {
+            throw CatalogException.invalidArgument(leftName + " 和 " + rightName + " 的长度必须一致");
+        }
+    }
+
+    /**
+     * 排序位置类参数允许缺省，但不接受负数，避免把无效索引继续传入核心逻辑。
+     */
+    private Integer requireNonNegative(Integer value, String fieldName) {
+        if (value != null && value < 0) {
+            throw CatalogException.invalidArgument(fieldName + " 不能小于 0");
+        }
+        return value;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     /**

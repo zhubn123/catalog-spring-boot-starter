@@ -124,6 +124,16 @@ class CatalogServiceImplTest {
     }
 
     @Test
+    void batchBindRejectsEmptyNodeIds() {
+        assertThatThrownBy(() -> service.batchBind(List.of(), "biz-1", "deliver"))
+                .isInstanceOf(CatalogException.class)
+                .extracting("errorCode")
+                .isEqualTo("INVALID_ARGUMENT");
+
+        verifyNoInteractions(nodeMapper, relMapper);
+    }
+
+    @Test
     void batchBindByBizIdsInsertsOnlyNewPairwiseBindings() {
         when(nodeMapper.selectIdsHavingChildren(List.of(10L, 20L))).thenReturn(Collections.emptyList());
         when(relMapper.selectByBizIds(List.of("biz-1", "biz-2"), "deliver"))

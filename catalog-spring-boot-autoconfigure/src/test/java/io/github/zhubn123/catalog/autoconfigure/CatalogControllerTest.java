@@ -11,8 +11,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class CatalogControllerTest {
@@ -85,5 +87,65 @@ class CatalogControllerTest {
         controller.subtreeNodes(9L);
 
         verify(catalogService).listSubtreeNodes(9L);
+    }
+
+    @Test
+    void batchAddNodeRejectsBlankNames() {
+        assertThatThrownBy(() -> controller.batchAddNode(
+                new CatalogController.BatchAddNodeRequest(1L, List.of(" ", "")),
+                null,
+                null
+        ))
+                .hasMessageContaining("names");
+
+        verifyNoInteractions(catalogService);
+    }
+
+    @Test
+    void batchBindPairsRejectsMismatchedPairCount() {
+        assertThatThrownBy(() -> controller.batchBindPairs(
+                new CatalogController.BatchBindPairsRequest(List.of(11L, 12L), List.of("D-1"), "deliver"),
+                null,
+                null,
+                null
+        ))
+                .hasMessageContaining("长度必须一致");
+
+        verifyNoInteractions(catalogService);
+    }
+
+    @Test
+    void moveRejectsNegativeTargetIndex() {
+        assertThatThrownBy(() -> controller.move(
+                new CatalogController.MoveNodeRequest(9L, 1L, -1),
+                null,
+                null,
+                null
+        ))
+                .hasMessageContaining("targetIndex");
+
+        verifyNoInteractions(catalogService);
+    }
+
+    @Test
+    void updateNodeRejectsEmptyMutationRequest() {
+        assertThatThrownBy(() -> controller.updateNode(
+                new CatalogController.UpdateNodeRequest(9L, " ", " ", null),
+                null,
+                null,
+                null,
+                null
+        ))
+                .hasMessageContaining("至少提供一个可更新字段");
+
+        verifyNoInteractions(catalogService);
+    }
+
+    @Test
+    void bizPathRejectsBlankBizType() {
+        assertThatThrownBy(() -> controller.bizPath("biz-1", " "))
+                .hasMessageContaining("bizType");
+
+        verifyNoInteractions(catalogService);
     }
 }

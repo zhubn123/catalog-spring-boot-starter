@@ -51,7 +51,7 @@ final class CatalogBindingService {
     @Deprecated
     void batchBind(List<Long> nodeIds, String bizId, String bizType) {
         if (nodeIds == null || nodeIds.isEmpty()) {
-            return;
+            throw CatalogException.invalidArgument("nodeIds不能为空");
         }
 
         List<Long> validNodeIds = nodeIds.stream()
@@ -60,7 +60,7 @@ final class CatalogBindingService {
                 .distinct()
                 .toList();
         if (validNodeIds.isEmpty()) {
-            return;
+            throw CatalogException.invalidArgument("nodeIds不能为空");
         }
         if (validNodeIds.size() > 1) {
             throw CatalogException.invalidArgument(

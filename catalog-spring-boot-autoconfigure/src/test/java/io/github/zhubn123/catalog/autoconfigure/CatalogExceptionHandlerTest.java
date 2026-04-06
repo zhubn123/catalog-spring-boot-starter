@@ -32,6 +32,16 @@ class CatalogExceptionHandlerTest {
     }
 
     @Test
+    void handleCatalogExceptionMapsInvalidArgumentToBadRequest() {
+        ResponseEntity<CatalogErrorResponse> response = handler.handleCatalogException(
+                CatalogException.invalidArgument("bizType不能为空")
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(new CatalogErrorResponse("INVALID_ARGUMENT", "bizType不能为空"));
+    }
+
+    @Test
     void handleBadRequestReturnsStablePayload() {
         ResponseEntity<CatalogErrorResponse> response = handler.handleBadRequest(
                 new HttpMessageNotReadableException("bad json")
