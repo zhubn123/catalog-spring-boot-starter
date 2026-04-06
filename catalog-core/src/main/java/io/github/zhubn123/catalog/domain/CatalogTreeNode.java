@@ -3,7 +3,9 @@ package io.github.zhubn123.catalog.domain;
 import lombok.Data;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 目录树节点视图。
@@ -21,6 +23,28 @@ public class CatalogTreeNode {
     private String path;
     private Integer level;
     private Integer sort;
+    /**
+     * 是否为当前返回树中的叶子节点。
+     *
+     * <p>该标记由后端组装树时计算，便于前端直接决定是否展示“可绑定业务对象”等交互。</p>
+     */
+    private Boolean leaf;
+
+    /**
+     * 当前节点是否适合作为业务绑定目标。
+     *
+     * <p>现阶段默认与 {@link #leaf} 保持一致，只允许叶子节点绑定业务对象；
+     * 后续如果引入更细粒度策略，可以在不改接口结构的前提下继续扩展。</p>
+     */
+    private Boolean bindable;
+
+    /**
+     * 预留给扩展策略的附加数据。
+     *
+     * <p>例如后续可以在叶子节点上补充业务摘要、绑定统计或前端展示所需的额外标记。</p>
+     */
+    private Map<String, Object> extensions = new LinkedHashMap<>();
+
     private List<CatalogTreeNode> children = new ArrayList<>();
 
     public static CatalogTreeNode from(CatalogNode node) {

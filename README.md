@@ -147,6 +147,13 @@ List<CatalogNode> path = catalogService.getBizPath("DELIVER-001", "deliver");
 
 > `nodes`、`bizTreeNodes`、`subtreeNodes` 返回的都是按树遍历顺序排列的扁平节点列表。
 > `tree`、`bizTree`、`subtree` 会在后端完成 `children` 组装，直接返回嵌套树结构。
+> 树形节点额外包含 `leaf`、`bindable` 与 `extensions` 字段，便于后续继续扩展叶子节点业务装配策略。
+
+### 树节点扩展策略
+
+- 默认情况下，后端会把叶子节点标记为 `leaf=true`、`bindable=true`。
+- 如果你希望在树节点上补充业务摘要、绑定统计或叶子节点挂载信息，可以实现 `CatalogTreeNodeEnricher` Bean。
+- 自定义策略会在树组装完成后执行，推荐把附加信息写入 `extensions`，避免频繁变更基础返回结构。
 
 ## 🔧 配置项
 

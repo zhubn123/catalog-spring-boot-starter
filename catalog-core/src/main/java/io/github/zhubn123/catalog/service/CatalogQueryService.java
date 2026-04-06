@@ -30,11 +30,16 @@ final class CatalogQueryService {
 
     private final CatalogNodeMapper nodeMapper;
     private final CatalogRelMapper relMapper;
-    private final CatalogTreeAssembler treeAssembler = new CatalogTreeAssembler();
+    private final CatalogTreeAssembler treeAssembler;
 
     CatalogQueryService(CatalogNodeMapper nodeMapper, CatalogRelMapper relMapper) {
+        this(nodeMapper, relMapper, new CatalogTreeAssembler());
+    }
+
+    CatalogQueryService(CatalogNodeMapper nodeMapper, CatalogRelMapper relMapper, CatalogTreeAssembler treeAssembler) {
         this.nodeMapper = nodeMapper;
         this.relMapper = relMapper;
+        this.treeAssembler = treeAssembler;
     }
 
     List<CatalogNode> listNodesInTreeOrder() {
@@ -42,7 +47,7 @@ final class CatalogQueryService {
     }
 
     List<CatalogTreeNode> listNodeTree() {
-        return treeAssembler.assemble(listNodesInTreeOrder());
+        return treeAssembler.assemble(listNodesInTreeOrder(), CatalogTreeAssembleContext.fullTree());
     }
 
     List<CatalogNode> listPathByNodeId(Long nodeId) {
@@ -122,8 +127,8 @@ final class CatalogQueryService {
         return sortNodesForTreeTraversal(nodeMapper.selectByIds(new ArrayList<>(relatedNodeIds)));
     }
 
-    List<CatalogTreeNode> listBizRelatedTree(Long boundNodeId) {
-        return treeAssembler.assemble(listBizRelatedNodes(boundNodeId));
+    List<CatalogTreeNode> listBizRelatedTree(Long boundNodeId, String bizId, String bizType) {
+        return treeAssembler.assemble(listBizRelatedNodes(boundNodeId), CatalogTreeAssembleContext.bizTree(bizId, bizType));
     }
 
     List<CatalogNode> listSubtreeNodes(Long nodeId) {
@@ -138,7 +143,7 @@ final class CatalogQueryService {
     }
 
     List<CatalogTreeNode> listSubtreeTree(Long nodeId) {
-        return treeAssembler.assemble(listSubtreeNodes(nodeId));
+        return treeAssembler.assemble(listSubtreeNodes(nodeId), CatalogTreeAssembleContext.subtree(nodeId));
     }
 
     /**

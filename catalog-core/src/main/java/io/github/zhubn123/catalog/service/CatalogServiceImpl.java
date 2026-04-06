@@ -27,9 +27,17 @@ public class CatalogServiceImpl implements CatalogService {
     private final CatalogQueryService queryService;
 
     public CatalogServiceImpl(CatalogNodeMapper nodeMapper, CatalogRelMapper relMapper) {
+        this(nodeMapper, relMapper, List.of());
+    }
+
+    public CatalogServiceImpl(
+            CatalogNodeMapper nodeMapper,
+            CatalogRelMapper relMapper,
+            List<CatalogTreeNodeEnricher> treeNodeEnrichers
+    ) {
         this.nodeCommandService = new CatalogNodeCommandService(nodeMapper, relMapper);
         this.bindingService = new CatalogBindingService(nodeMapper, relMapper);
-        this.queryService = new CatalogQueryService(nodeMapper, relMapper);
+        this.queryService = new CatalogQueryService(nodeMapper, relMapper, new CatalogTreeAssembler(treeNodeEnrichers));
     }
 
     @Override
@@ -142,7 +150,7 @@ public class CatalogServiceImpl implements CatalogService {
         if (boundNodeId == null) {
             return Collections.emptyList();
         }
-        return queryService.listBizRelatedTree(boundNodeId);
+        return queryService.listBizRelatedTree(boundNodeId, bizId, bizType);
     }
 
     @Override

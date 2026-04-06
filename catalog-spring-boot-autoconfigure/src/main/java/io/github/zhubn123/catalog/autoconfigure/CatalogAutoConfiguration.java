@@ -4,12 +4,15 @@ import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
 import io.github.zhubn123.catalog.service.CatalogService;
 import io.github.zhubn123.catalog.service.CatalogServiceImpl;
+import io.github.zhubn123.catalog.service.CatalogTreeNodeEnricher;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
 
 /**
  * 目录模块自动配置。
@@ -28,8 +31,12 @@ public class CatalogAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public CatalogService catalogService(CatalogNodeMapper nodeMapper, CatalogRelMapper relMapper) {
-        return new CatalogServiceImpl(nodeMapper, relMapper);
+    public CatalogService catalogService(
+            CatalogNodeMapper nodeMapper,
+            CatalogRelMapper relMapper,
+            List<CatalogTreeNodeEnricher> treeNodeEnrichers
+    ) {
+        return new CatalogServiceImpl(nodeMapper, relMapper, treeNodeEnrichers);
     }
 
     @Bean
