@@ -65,14 +65,15 @@ mybatis:
 1. 复制 `samples/catalog-demo/src/main/resources/application-local.yml.example`
    为 `samples/catalog-demo/src/main/resources/application-local.yml`
 2. 按本机环境填写数据库连接信息
-3. 以 `local` profile 启动 sample，例如：
+3. 直接启动 sample：
 
 ```bash
-mvn -f samples/catalog-demo/pom.xml spring-boot:run -Dspring-boot.run.profiles=local
+mvn -f samples/catalog-demo/pom.xml spring-boot:run
 ```
 
 > 仓库中的 `application.yml` 只保留公共配置；
 > `application-local.yml` 已加入 `.gitignore`，不会误把本地敏感信息提交进仓库。
+> sample 默认使用 `local` profile；如果你想切到别的 profile，再显式传入即可。
 
 ### 4. 使用服务
 

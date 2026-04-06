@@ -1,6 +1,10 @@
 server:
   port: 8080
 
+spring:
+  profiles:
+    default: local
+
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   configuration:
