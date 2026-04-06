@@ -86,8 +86,16 @@
     </update>
 
     <update id="batchUpdatePath" parameterType="java.util.List">
-        <foreach collection="list" item="item" separator=";">
-            UPDATE catalog_node SET path = #{item.path} WHERE id = #{item.id}
+        UPDATE catalog_node
+        SET path = CASE id
+        <foreach collection="list" item="item">
+            WHEN #{item.id} THEN #{item.path}
+        </foreach>
+            ELSE path
+        END
+        WHERE id IN
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            #{item.id}
         </foreach>
     </update>
 
