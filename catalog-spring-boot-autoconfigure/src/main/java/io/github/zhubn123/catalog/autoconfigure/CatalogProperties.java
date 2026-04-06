@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * 目录模块配置属性。
  *
- * <p>可通过 application.yml 中的 catalog 前缀进行配置。</p>
+ * <p>当前仅保留已经真实生效的公开配置项，避免暴露“看起来能配、实际上无效”的参数。</p>
  *
  * @author zhubn
  * @date 2026/4/2
@@ -16,18 +16,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class CatalogProperties {
 
     /**
-     * 数据库表名前缀
-     */
-    private String tablePrefix = "catalog_";
-
-    /**
-     * 是否启用 REST API
+     * 是否启用 REST API。
      */
     private boolean enableRestApi = true;
-
-    /**
-     * 是否在启动时初始化数据库
-     */
-    private boolean initSchema = false;
-
 }

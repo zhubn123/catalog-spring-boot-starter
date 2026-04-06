@@ -129,8 +129,9 @@ List<CatalogNode> path = catalogService.getBizPath("DELIVER-001", "deliver");
 catalog:
   enabled: true              # 是否启用
   enable-rest-api: true      # 是否启用REST API
-  table-prefix: catalog_     # 表名前缀
 ```
+
+> 当前公开配置仅保留已落地生效的选项；`table-prefix`、`init-schema` 等历史占位配置已移除。
 
 ## 🏗️ 项目结构
 
