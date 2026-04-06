@@ -186,6 +186,52 @@ class CatalogServiceImplTest {
     }
 
     @Test
+    void listNodesInTreeOrderReturnsNodesInTreeOrderUsingSiblingSort() {
+        when(nodeMapper.selectAll()).thenReturn(List.of(
+                node(1L, 0L, "Root", "/1", 1, 1),
+                node(10L, 1L, "Second", "/1/10", 2, 2),
+                node(11L, 10L, "Grandchild", "/1/10/11", 3, 1),
+                node(2L, 1L, "First", "/1/2", 2, 1)
+        ));
+
+        List<CatalogNode> nodes = service.listNodesInTreeOrder();
+
+        assertThat(nodes).extracting(CatalogNode::getId).containsExactly(1L, 2L, 10L, 11L);
+    }
+
+    @Test
+    void listSubtreeNodesReturnsNodesInTreeOrderUsingSiblingSort() {
+        CatalogNode root = node(1L, 0L, "Root", "/1", 1, 1);
+        when(nodeMapper.selectById(1L)).thenReturn(root);
+        when(nodeMapper.selectByPathPrefix("/1")).thenReturn(List.of(
+                root,
+                node(10L, 1L, "Second", "/1/10", 2, 2),
+                node(11L, 10L, "Grandchild", "/1/10/11", 3, 1),
+                node(2L, 1L, "First", "/1/2", 2, 1)
+        ));
+
+        List<CatalogNode> subtree = service.listSubtreeNodes(1L);
+
+        assertThat(subtree).extracting(CatalogNode::getId).containsExactly(1L, 2L, 10L, 11L);
+    }
+
+    @Test
+    void listBizRelatedNodesReturnsNodesInTreeOrderUsingSiblingSort() {
+        when(relMapper.selectByBiz("biz-1", "deliver"))
+                .thenReturn(List.of(rel(11L, "biz-1", "deliver")));
+        when(nodeMapper.selectById(11L)).thenReturn(node(11L, 10L, "Grandchild", "/1/10/11", 3, 1));
+        when(nodeMapper.selectByIds(List.of(11L, 1L, 10L))).thenReturn(List.of(
+                node(11L, 10L, "Grandchild", "/1/10/11", 3, 1),
+                node(1L, 0L, "Root", "/1", 1, 1),
+                node(10L, 1L, "Second", "/1/10", 2, 2)
+        ));
+
+        List<CatalogNode> bizTree = service.listBizRelatedNodes("biz-1", "deliver");
+
+        assertThat(bizTree).extracting(CatalogNode::getId).containsExactly(1L, 10L, 11L);
+    }
+
+    @Test
     void getBizPathRejectsHistoricalMultipleBindings() {
         when(relMapper.selectByBiz("biz-1", "deliver")).thenReturn(List.of(
                 rel(3L, "biz-1", "deliver"),
@@ -205,7 +251,7 @@ class CatalogServiceImplTest {
                 rel(4L, "biz-1", "deliver")
         ));
 
-        assertThatThrownBy(() -> service.getBizTree("biz-1", "deliver"))
+        assertThatThrownBy(() -> service.listBizRelatedNodes("biz-1", "deliver"))
                 .isInstanceOf(CatalogException.class)
                 .extracting("errorCode")
                 .isEqualTo("BIZ_BOUND_TO_MULTIPLE_NODES");
