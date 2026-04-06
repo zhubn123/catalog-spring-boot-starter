@@ -55,20 +55,24 @@ CREATE TABLE catalog_rel (
 > - 只有叶子节点允许绑定业务对象
 > - 同一 `biz_type + biz_id` 最多绑定一个目录节点
 
-### 3. 配置 application.yml
+### 3. 配置 sample 本地环境
 
 ```yaml
-spring:
-  datasource:
-    url: ${CATALOG_DEMO_DB_URL:jdbc:mysql://localhost:3306/your_db}
-    username: ${CATALOG_DEMO_DB_USERNAME:root}
-    password: ${CATALOG_DEMO_DB_PASSWORD:}
-
 mybatis:
   mapper-locations: classpath:mapper/*.xml
 ```
 
-> sample 工程推荐通过环境变量覆盖本地数据库配置，避免把个人开发环境账号密码直接写进仓库。
+1. 复制 `samples/catalog-demo/src/main/resources/application-local.yml.example`
+   为 `samples/catalog-demo/src/main/resources/application-local.yml`
+2. 按本机环境填写数据库连接信息
+3. 以 `local` profile 启动 sample，例如：
+
+```bash
+mvn -f samples/catalog-demo/pom.xml spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+> 仓库中的 `application.yml` 只保留公共配置；
+> `application-local.yml` 已加入 `.gitignore`，不会误把本地敏感信息提交进仓库。
 
 ### 4. 使用服务
 
