@@ -1,5 +1,6 @@
 package io.github.zhubn123.catalog.autoconfigure;
 
+import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.service.CatalogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CatalogControllerTest {
@@ -70,9 +72,14 @@ class CatalogControllerTest {
 
     @Test
     void treeKeepsLegacyCompatibilityAlias() {
-        controller.tree();
+        CatalogTreeNode root = new CatalogTreeNode();
+        root.setId(1L);
+        when(catalogService.listNodeTree()).thenReturn(List.of(root));
 
-        verify(catalogService).listNodesInTreeOrder();
+        List<CatalogTreeNode> tree = controller.tree();
+
+        verify(catalogService).listNodeTree();
+        assertThat(tree).extracting(CatalogTreeNode::getId).containsExactly(1L);
     }
 
     @Test
@@ -87,6 +94,30 @@ class CatalogControllerTest {
         controller.subtreeNodes(9L);
 
         verify(catalogService).listSubtreeNodes(9L);
+    }
+
+    @Test
+    void bizTreeReturnsNestedTreeStructure() {
+        CatalogTreeNode root = new CatalogTreeNode();
+        root.setId(1L);
+        when(catalogService.listBizRelatedTree("biz-1", "deliver")).thenReturn(List.of(root));
+
+        List<CatalogTreeNode> tree = controller.bizTree("biz-1", "deliver");
+
+        verify(catalogService).listBizRelatedTree("biz-1", "deliver");
+        assertThat(tree).extracting(CatalogTreeNode::getId).containsExactly(1L);
+    }
+
+    @Test
+    void subtreeReturnsNestedTreeStructure() {
+        CatalogTreeNode root = new CatalogTreeNode();
+        root.setId(9L);
+        when(catalogService.listSubtreeTree(9L)).thenReturn(List.of(root));
+
+        List<CatalogTreeNode> tree = controller.subtree(9L);
+
+        verify(catalogService).listSubtreeTree(9L);
+        assertThat(tree).extracting(CatalogTreeNode::getId).containsExactly(9L);
     }
 
     @Test

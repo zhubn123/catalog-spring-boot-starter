@@ -1,6 +1,7 @@
 package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 
 import java.util.List;
 
@@ -61,6 +62,14 @@ public interface CatalogService {
     List<CatalogNode> listNodesInTreeOrder();
 
     /**
+     * 返回完整目录的嵌套树结构。
+     *
+     * <p>与 {@link #listNodesInTreeOrder()} 不同，该方法会在后端完成父子关系组装，
+     * 适合前端直接展示树形组件。</p>
+     */
+    List<CatalogTreeNode> listNodeTree();
+
+    /**
      * 兼容旧命名，仍然返回按树遍历顺序排列的扁平节点列表。
      */
     @Deprecated
@@ -90,6 +99,13 @@ public interface CatalogService {
     List<CatalogNode> listBizRelatedNodes(String bizId, String bizType);
 
     /**
+     * 返回业务对象对应的局部嵌套树结构。
+     *
+     * <p>结果包含绑定节点及其祖先节点，并在后端完成 {@code children} 组装。</p>
+     */
+    List<CatalogTreeNode> listBizRelatedTree(String bizId, String bizType);
+
+    /**
      * 兼容旧命名，仍然返回用于还原业务局部树的扁平节点列表。
      */
     @Deprecated
@@ -103,6 +119,13 @@ public interface CatalogService {
      * <p>结果包含当前节点及其全部后代节点，返回值仍然是按树遍历顺序排列的扁平列表。</p>
      */
     List<CatalogNode> listSubtreeNodes(Long nodeId);
+
+    /**
+     * 返回指定节点子树的嵌套树结构。
+     *
+     * <p>结果包含当前节点及其全部后代节点，并按树结构组装为多层 children。</p>
+     */
+    List<CatalogTreeNode> listSubtreeTree(Long nodeId);
 
     /**
      * 兼容旧命名，仍然返回子树节点的扁平列表。

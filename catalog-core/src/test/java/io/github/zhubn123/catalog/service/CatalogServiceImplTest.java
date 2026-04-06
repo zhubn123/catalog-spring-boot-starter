@@ -1,6 +1,7 @@
 package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.domain.CatalogRel;
 import io.github.zhubn123.catalog.exception.CatalogException;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
@@ -210,6 +211,26 @@ class CatalogServiceImplTest {
     }
 
     @Test
+    void listNodeTreeReturnsNestedTreeStructure() {
+        when(nodeMapper.selectAll()).thenReturn(List.of(
+                node(1L, 0L, "Root", "/1", 1, 1),
+                node(10L, 1L, "Second", "/1/10", 2, 2),
+                node(11L, 10L, "Grandchild", "/1/10/11", 3, 1),
+                node(2L, 1L, "First", "/1/2", 2, 1)
+        ));
+
+        List<CatalogTreeNode> tree = service.listNodeTree();
+
+        assertThat(tree).singleElement().satisfies(root -> {
+            assertThat(root.getId()).isEqualTo(1L);
+            assertThat(root.getChildren()).extracting(CatalogTreeNode::getId).containsExactly(2L, 10L);
+            assertThat(root.getChildren().get(1).getChildren())
+                    .extracting(CatalogTreeNode::getId)
+                    .containsExactly(11L);
+        });
+    }
+
+    @Test
     void listSubtreeNodesReturnsNodesInTreeOrderUsingSiblingSort() {
         CatalogNode root = node(1L, 0L, "Root", "/1", 1, 1);
         when(nodeMapper.selectById(1L)).thenReturn(root);
@@ -226,6 +247,25 @@ class CatalogServiceImplTest {
     }
 
     @Test
+    void listSubtreeTreeReturnsNestedTreeStructure() {
+        CatalogNode root = node(1L, 0L, "Root", "/1", 1, 1);
+        when(nodeMapper.selectById(1L)).thenReturn(root);
+        when(nodeMapper.selectByPathPrefix("/1")).thenReturn(List.of(
+                root,
+                node(10L, 1L, "Second", "/1/10", 2, 2),
+                node(11L, 10L, "Grandchild", "/1/10/11", 3, 1),
+                node(2L, 1L, "First", "/1/2", 2, 1)
+        ));
+
+        List<CatalogTreeNode> subtree = service.listSubtreeTree(1L);
+
+        assertThat(subtree).singleElement().satisfies(treeRoot -> {
+            assertThat(treeRoot.getId()).isEqualTo(1L);
+            assertThat(treeRoot.getChildren()).extracting(CatalogTreeNode::getId).containsExactly(2L, 10L);
+        });
+    }
+
+    @Test
     void listBizRelatedNodesReturnsNodesInTreeOrderUsingSiblingSort() {
         when(relMapper.selectByBiz("biz-1", "deliver"))
                 .thenReturn(List.of(rel(11L, "biz-1", "deliver")));
@@ -239,6 +279,28 @@ class CatalogServiceImplTest {
         List<CatalogNode> bizTree = service.listBizRelatedNodes("biz-1", "deliver");
 
         assertThat(bizTree).extracting(CatalogNode::getId).containsExactly(1L, 10L, 11L);
+    }
+
+    @Test
+    void listBizRelatedTreeReturnsNestedTreeStructure() {
+        when(relMapper.selectByBiz("biz-1", "deliver"))
+                .thenReturn(List.of(rel(11L, "biz-1", "deliver")));
+        when(nodeMapper.selectById(11L)).thenReturn(node(11L, 10L, "Grandchild", "/1/10/11", 3, 1));
+        when(nodeMapper.selectByIds(List.of(11L, 1L, 10L))).thenReturn(List.of(
+                node(11L, 10L, "Grandchild", "/1/10/11", 3, 1),
+                node(1L, 0L, "Root", "/1", 1, 1),
+                node(10L, 1L, "Second", "/1/10", 2, 2)
+        ));
+
+        List<CatalogTreeNode> bizTree = service.listBizRelatedTree("biz-1", "deliver");
+
+        assertThat(bizTree).singleElement().satisfies(root -> {
+            assertThat(root.getId()).isEqualTo(1L);
+            assertThat(root.getChildren()).singleElement().satisfies(second -> {
+                assertThat(second.getId()).isEqualTo(10L);
+                assertThat(second.getChildren()).extracting(CatalogTreeNode::getId).containsExactly(11L);
+            });
+        });
     }
 
     @Test

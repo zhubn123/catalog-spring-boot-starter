@@ -1,6 +1,7 @@
 package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
 import org.springframework.stereotype.Service;
@@ -94,6 +95,11 @@ public class CatalogServiceImpl implements CatalogService {
     }
 
     @Override
+    public List<CatalogTreeNode> listNodeTree() {
+        return queryService.listNodeTree();
+    }
+
+    @Override
     public List<CatalogNode> getBizPath(String bizId, String bizType) {
         Long boundNodeId = bindingService.resolveSingleBoundNodeId(bizId, bizType);
         if (boundNodeId == null) {
@@ -131,7 +137,21 @@ public class CatalogServiceImpl implements CatalogService {
     }
 
     @Override
+    public List<CatalogTreeNode> listBizRelatedTree(String bizId, String bizType) {
+        Long boundNodeId = bindingService.resolveSingleBoundNodeId(bizId, bizType);
+        if (boundNodeId == null) {
+            return Collections.emptyList();
+        }
+        return queryService.listBizRelatedTree(boundNodeId);
+    }
+
+    @Override
     public List<CatalogNode> listSubtreeNodes(Long nodeId) {
         return queryService.listSubtreeNodes(nodeId);
+    }
+
+    @Override
+    public List<CatalogTreeNode> listSubtreeTree(Long nodeId) {
+        return queryService.listSubtreeTree(nodeId);
     }
 }

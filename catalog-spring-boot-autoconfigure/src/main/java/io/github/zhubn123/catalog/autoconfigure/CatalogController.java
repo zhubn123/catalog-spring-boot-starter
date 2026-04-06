@@ -1,6 +1,7 @@
 package io.github.zhubn123.catalog.autoconfigure;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.exception.CatalogException;
 import io.github.zhubn123.catalog.service.CatalogService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -191,12 +192,13 @@ public class CatalogController {
     }
 
     /**
-     * 兼容旧命名，返回值仍是扁平节点列表，而不是已经组装好的嵌套树。
+     * 返回完整目录的嵌套树结构。
+     *
+     * <p>该接口会在后端完成 children 组装，适合树形组件直接消费。</p>
      */
     @GetMapping("/tree")
-    @Deprecated
-    public List<CatalogNode> tree() {
-        return catalogService.listNodesInTreeOrder();
+    public List<CatalogTreeNode> tree() {
+        return catalogService.listNodeTree();
     }
 
     /**
@@ -232,12 +234,11 @@ public class CatalogController {
     }
 
     /**
-     * 兼容旧命名，返回值仍是扁平节点列表。
+     * 返回业务对象对应的局部嵌套树结构。
      */
     @GetMapping("/bizTree")
-    @Deprecated
-    public List<CatalogNode> bizTree(String bizId, String bizType) {
-        return bizTreeNodes(bizId, bizType);
+    public List<CatalogTreeNode> bizTree(String bizId, String bizType) {
+        return catalogService.listBizRelatedTree(requireText(bizId, "bizId"), requireText(bizType, "bizType"));
     }
 
     /**
@@ -249,12 +250,11 @@ public class CatalogController {
     }
 
     /**
-     * 兼容旧命名，返回值仍是扁平节点列表。
+     * 返回指定节点子树的嵌套树结构。
      */
     @GetMapping("/subtree")
-    @Deprecated
-    public List<CatalogNode> subtree(Long nodeId) {
-        return subtreeNodes(nodeId);
+    public List<CatalogTreeNode> subtree(Long nodeId) {
+        return catalogService.listSubtreeTree(requirePositiveId(nodeId, "nodeId"));
     }
 
     /**

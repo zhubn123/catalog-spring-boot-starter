@@ -2,6 +2,7 @@ package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import io.github.zhubn123.catalog.domain.CatalogRel;
+import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
 import org.springframework.util.StringUtils;
@@ -29,6 +30,7 @@ final class CatalogQueryService {
 
     private final CatalogNodeMapper nodeMapper;
     private final CatalogRelMapper relMapper;
+    private final CatalogTreeAssembler treeAssembler = new CatalogTreeAssembler();
 
     CatalogQueryService(CatalogNodeMapper nodeMapper, CatalogRelMapper relMapper) {
         this.nodeMapper = nodeMapper;
@@ -37,6 +39,10 @@ final class CatalogQueryService {
 
     List<CatalogNode> listNodesInTreeOrder() {
         return sortNodesForTreeTraversal(nodeMapper.selectAll());
+    }
+
+    List<CatalogTreeNode> listNodeTree() {
+        return treeAssembler.assemble(listNodesInTreeOrder());
     }
 
     List<CatalogNode> listPathByNodeId(Long nodeId) {
@@ -116,6 +122,10 @@ final class CatalogQueryService {
         return sortNodesForTreeTraversal(nodeMapper.selectByIds(new ArrayList<>(relatedNodeIds)));
     }
 
+    List<CatalogTreeNode> listBizRelatedTree(Long boundNodeId) {
+        return treeAssembler.assemble(listBizRelatedNodes(boundNodeId));
+    }
+
     List<CatalogNode> listSubtreeNodes(Long nodeId) {
         CatalogNode node = nodeMapper.selectById(nodeId);
         if (node == null) {
@@ -125,6 +135,10 @@ final class CatalogQueryService {
             return List.of(node);
         }
         return sortNodesForTreeTraversal(nodeMapper.selectByPathPrefix(node.getPath()));
+    }
+
+    List<CatalogTreeNode> listSubtreeTree(Long nodeId) {
+        return treeAssembler.assemble(listSubtreeNodes(nodeId));
     }
 
     /**
