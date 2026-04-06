@@ -75,7 +75,25 @@ mvn -f samples/catalog-demo/pom.xml spring-boot:run
 > `application-local.yml` 已加入 `.gitignore`，不会误把本地敏感信息提交进仓库。
 > sample 默认使用 `local` profile；如果你想切到别的 profile，再显式传入即可。
 
-### 4. 使用服务
+### 4. 构建与发布
+
+- 日常开发构建直接使用 `mvn test` 或 `mvn package`，默认流程只保留编译、测试和普通打包。
+- 如需生成发布用的 `sources/javadocs` 制品，可显式启用 `release` profile：
+
+```bash
+mvn -Prelease verify
+```
+
+- 如需在此基础上继续生成带签名的发布制品，再额外启用 `release-sign` profile：
+
+```bash
+mvn -Prelease,release-sign verify
+```
+
+- GitHub Packages 发布由 `.github/workflows/maven-publish.yml` 负责，只在推送 `v*` 标签或手动触发 workflow 时执行，并在 CI 中显式启用 `release` profile。
+- workflow 中使用 `-Dgpg.skip=true`，避免把本地发布签名要求带进日常 CI。
+
+### 5. 使用服务
 
 ```java
 @Autowired
