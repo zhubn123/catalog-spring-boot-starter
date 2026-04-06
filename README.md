@@ -5,7 +5,7 @@
 ## ✨ 特性
 
 - 🌳 **树形结构管理** - 支持无限层级的目录树
-- 🔗 **业务对象绑定** - 灵活的节点-业务绑定关系
+- 🔗 **业务对象绑定** - 叶子节点可选的一对一业务绑定
 - 🎯 **拖拽排序** - 支持节点移动和排序
 - 🚀 **高性能查询** - 路径冗余设计，避免递归查询
 - 🔧 **开箱即用** - Spring Boot Starter 一键集成
@@ -44,10 +44,16 @@ CREATE TABLE catalog_rel (
     node_id BIGINT NOT NULL,
     biz_id VARCHAR(100) NOT NULL,
     biz_type VARCHAR(50) NOT NULL,
-    UNIQUE KEY uk_node_biz (node_id, biz_id, biz_type),
+    UNIQUE KEY uk_biz (biz_id, biz_type),
+    INDEX idx_node_type (node_id, biz_type),
     INDEX idx_biz (biz_id, biz_type)
 );
 ```
+
+> 说明：
+> - 目录节点可以只作为容器，不必绑定业务对象
+> - 只有叶子节点允许绑定业务对象
+> - 同一 `biz_type + biz_id` 最多绑定一个目录节点
 
 ### 3. 配置 application.yml
 
@@ -71,12 +77,14 @@ private CatalogService catalogService;
 // 创建目录
 Long projectId = catalogService.addNode(0L, "我的项目");
 Long contractId = catalogService.addNode(projectId, "合同A");
+Long deliveryId = catalogService.addNode(contractId, "交付物A");
 
-// 绑定业务对象
-catalogService.bind(contractId, "CONTRACT-001", "contract");
+// 目录节点可以只做容器，不必绑定业务对象
+// 叶子节点可选绑定业务对象
+catalogService.bind(deliveryId, "DELIVER-001", "deliver");
 
-// 查询路径
-List<CatalogNode> path = catalogService.getBizPath("CONTRACT-001", "contract");
+// 查询业务路径（单个业务对象最多绑定一个目录节点）
+List<CatalogNode> path = catalogService.getBizPath("DELIVER-001", "deliver");
 ```
 
 ## 📖 API 文档
@@ -96,7 +104,8 @@ List<CatalogNode> path = catalogService.getBizPath("CONTRACT-001", "contract");
 | API | 方法 | 说明 |
 |-----|------|------|
 | `/catalog/bind` | POST | 绑定业务对象 |
-| `/catalog/bind/batch` | POST | 批量绑定 |
+| `/catalog/bind/batch` | POST | 兼容接口，仅允许单业务对象绑定单个节点 |
+| `/catalog/bind/pairs` | POST | 批量一对一绑定 |
 | `/catalog/unbind` | POST | 解除绑定 |
 
 ### 查询
@@ -132,9 +141,12 @@ catalog-spring-boot-starter/
 
 ## 📝 核心设计
 
-### 叶子节点绑定约束
+### 业务绑定约束
 
-只有叶子节点（无子节点）才能绑定业务对象，保证数据一致性。
+- 目录节点可以只作为容器，不必绑定业务对象
+- 只有叶子节点（无子节点）才能绑定业务对象
+- 同一 `bizType + bizId` 最多绑定一个目录节点
+- 批量绑定推荐使用“多组一对一绑定”，而不是让一个业务对象绑定多个节点
 
 ### 路径冗余设计
 

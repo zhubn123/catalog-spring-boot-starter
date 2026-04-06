@@ -1,5 +1,7 @@
 package io.github.zhubn123.catalog.exception;
 
+import java.util.List;
+
 /**
  * 目录模块异常。
  *
@@ -57,6 +59,20 @@ public class CatalogException extends RuntimeException {
 
     public static CatalogException hasBindings(Long nodeId) {
         return new CatalogException("HAS_BINDINGS", "节点存在业务绑定，无法删除: " + nodeId);
+    }
+
+    public static CatalogException bizAlreadyBound(String bizId, String bizType, Long nodeId) {
+        return new CatalogException(
+                "BIZ_ALREADY_BOUND",
+                "业务对象已绑定到其他节点: bizType=" + bizType + ", bizId=" + bizId + ", nodeId=" + nodeId
+        );
+    }
+
+    public static CatalogException bizBoundToMultipleNodes(String bizId, String bizType, List<Long> nodeIds) {
+        return new CatalogException(
+                "BIZ_BOUND_TO_MULTIPLE_NODES",
+                "业务对象存在多个目录绑定，请先清理数据: bizType=" + bizType + ", bizId=" + bizId + ", nodeIds=" + nodeIds
+        );
     }
 
     public static CatalogException invalidArgument(String message) {

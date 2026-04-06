@@ -213,40 +213,44 @@ public class CatalogServiceImpl implements CatalogService {
         validateBindArgs(nodeId, bizId, bizType);
         ensureLeafNode(nodeId);
 
+        String normalizedBizId = trimToNull(bizId);
+        String normalizedBizType = trimToNull(bizType);
+        Long existingNodeId = resolveSingleBoundNodeId(normalizedBizId, normalizedBizType);
+        if (existingNodeId != null) {
+            if (Objects.equals(existingNodeId, nodeId)) {
+                return;
+            }
+            throw CatalogException.bizAlreadyBound(normalizedBizId, normalizedBizType, existingNodeId);
+        }
+
         CatalogRel rel = new CatalogRel();
         rel.setNodeId(nodeId);
-        rel.setBizId(trimToNull(bizId));
-        rel.setBizType(trimToNull(bizType));
+        rel.setBizId(normalizedBizId);
+        rel.setBizType(normalizedBizType);
         relMapper.insert(rel);
     }
 
+    @Deprecated
     @Override
     public void batchBind(List<Long> nodeIds, String bizId, String bizType) {
         if (nodeIds == null || nodeIds.isEmpty()) {
             return;
         }
 
-        validateBindArgs(nodeIds.get(0), bizId, bizType);
-        ensureLeafNodes(nodeIds);
-
-        List<CatalogRel> rels = new ArrayList<>(nodeIds.size());
-        String normalizedBizId = trimToNull(bizId);
-        String normalizedBizType = trimToNull(bizType);
-
-        for (Long nodeId : nodeIds) {
-            if (nodeId == null || nodeId <= 0) {
-                continue;
-            }
-            CatalogRel rel = new CatalogRel();
-            rel.setNodeId(nodeId);
-            rel.setBizId(normalizedBizId);
-            rel.setBizType(normalizedBizType);
-            rels.add(rel);
+        List<Long> validNodeIds = nodeIds.stream()
+                .filter(Objects::nonNull)
+                .filter(id -> id > 0)
+                .distinct()
+                .toList();
+        if (validNodeIds.isEmpty()) {
+            return;
         }
-
-        if (!rels.isEmpty()) {
-            relMapper.batchInsert(rels);
+        if (validNodeIds.size() > 1) {
+            throw CatalogException.invalidArgument(
+                    "单个业务对象只能绑定一个节点；如需批量绑定多个业务对象，请使用一对一批量绑定能力"
+            );
         }
+        bind(validNodeIds.get(0), bizId, bizType);
     }
 
     @Override
@@ -265,13 +269,40 @@ public class CatalogServiceImpl implements CatalogService {
             throw CatalogException.invalidArgument("bizType不能为空");
         }
 
-        List<CatalogRel> rels = new ArrayList<>(nodeIds.size());
+        Map<String, Long> requestedBindings = new LinkedHashMap<>();
         for (int i = 0; i < nodeIds.size(); i++) {
             Long nodeId = nodeIds.get(i);
             String bizId = trimToNull(bizIds.get(i));
             if (nodeId == null || nodeId <= 0 || bizId == null) {
                 continue;
             }
+            Long previousNodeId = requestedBindings.putIfAbsent(bizId, nodeId);
+            if (previousNodeId != null && !Objects.equals(previousNodeId, nodeId)) {
+                throw CatalogException.invalidArgument("同一业务对象不能批量绑定到多个节点: " + bizId);
+            }
+        }
+
+        if (requestedBindings.isEmpty()) {
+            return;
+        }
+
+        Map<String, Long> existingBindings = resolveExistingBindingsByBizId(
+                new ArrayList<>(requestedBindings.keySet()),
+                normalizedBizType
+        );
+
+        List<CatalogRel> rels = new ArrayList<>(requestedBindings.size());
+        for (Map.Entry<String, Long> entry : requestedBindings.entrySet()) {
+            String bizId = entry.getKey();
+            Long nodeId = entry.getValue();
+            Long existingNodeId = existingBindings.get(bizId);
+            if (existingNodeId != null) {
+                if (Objects.equals(existingNodeId, nodeId)) {
+                    continue;
+                }
+                throw CatalogException.bizAlreadyBound(bizId, normalizedBizType, existingNodeId);
+            }
+
             CatalogRel rel = new CatalogRel();
             rel.setNodeId(nodeId);
             rel.setBizId(bizId);
@@ -297,12 +328,12 @@ public class CatalogServiceImpl implements CatalogService {
 
     @Override
     public List<CatalogNode> getBizPath(String bizId, String bizType) {
-        List<Long> nodeIds = getNodeIds(bizId, bizType);
-        if (nodeIds.isEmpty()) {
+        Long nodeId = resolveSingleBoundNodeId(trimToNull(bizId), trimToNull(bizType));
+        if (nodeId == null) {
             return Collections.emptyList();
         }
 
-        CatalogNode node = nodeMapper.selectById(nodeIds.get(0));
+        CatalogNode node = nodeMapper.selectById(nodeId);
         if (node == null || !StringUtils.hasText(node.getPath())) {
             return Collections.emptyList();
         }
@@ -331,10 +362,11 @@ public class CatalogServiceImpl implements CatalogService {
 
     @Override
     public List<Long> getNodeIds(String bizId, String bizType) {
-        return relMapper.selectByBiz(bizId, bizType)
-                .stream()
-                .map(CatalogRel::getNodeId)
-                .toList();
+        Long nodeId = resolveSingleBoundNodeId(trimToNull(bizId), trimToNull(bizType));
+        if (nodeId == null) {
+            return Collections.emptyList();
+        }
+        return List.of(nodeId);
     }
 
     @Override
@@ -369,26 +401,24 @@ public class CatalogServiceImpl implements CatalogService {
 
     @Override
     public List<CatalogNode> getBizTree(String bizId, String bizType) {
-        List<Long> boundNodeIds = getNodeIds(bizId, bizType);
-        if (boundNodeIds.isEmpty()) {
+        Long boundNodeId = resolveSingleBoundNodeId(trimToNull(bizId), trimToNull(bizType));
+        if (boundNodeId == null) {
             return Collections.emptyList();
         }
 
         Set<Long> relatedNodeIds = new LinkedHashSet<>();
-        for (Long nodeId : boundNodeIds) {
-            CatalogNode node = nodeMapper.selectById(nodeId);
-            if (node == null || !StringUtils.hasText(node.getPath())) {
-                continue;
-            }
-
-            relatedNodeIds.add(nodeId);
-
-            List<Long> ancestorIds = Arrays.stream(node.getPath().split("/"))
-                    .filter(StringUtils::hasText)
-                    .map(Long::valueOf)
-                    .toList();
-            relatedNodeIds.addAll(ancestorIds);
+        CatalogNode node = nodeMapper.selectById(boundNodeId);
+        if (node == null || !StringUtils.hasText(node.getPath())) {
+            return Collections.emptyList();
         }
+
+        relatedNodeIds.add(boundNodeId);
+
+        List<Long> ancestorIds = Arrays.stream(node.getPath().split("/"))
+                .filter(StringUtils::hasText)
+                .map(Long::valueOf)
+                .toList();
+        relatedNodeIds.addAll(ancestorIds);
 
         if (relatedNodeIds.isEmpty()) {
             return Collections.emptyList();
@@ -550,6 +580,60 @@ public class CatalogServiceImpl implements CatalogService {
         if (nonLeafIds != null && !nonLeafIds.isEmpty()) {
             throw CatalogException.notLeafNode(nonLeafIds.get(0));
         }
+    }
+
+    private Long resolveSingleBoundNodeId(String bizId, String bizType) {
+        if (bizId == null || bizType == null) {
+            return null;
+        }
+
+        List<Long> nodeIds = relMapper.selectByBiz(bizId, bizType).stream()
+                .map(CatalogRel::getNodeId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (nodeIds.isEmpty()) {
+            return null;
+        }
+        if (nodeIds.size() > 1) {
+            throw CatalogException.bizBoundToMultipleNodes(bizId, bizType, nodeIds);
+        }
+        return nodeIds.get(0);
+    }
+
+    private Map<String, Long> resolveExistingBindingsByBizId(List<String> bizIds, String bizType) {
+        List<String> normalizedBizIds = bizIds.stream()
+                .map(this::trimToNull)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (normalizedBizIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, List<Long>> nodeIdsByBizId = relMapper.selectByBizIds(normalizedBizIds, bizType).stream()
+                .filter(item -> item.getBizId() != null)
+                .collect(Collectors.groupingBy(
+                        CatalogRel::getBizId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(CatalogRel::getNodeId, Collectors.toList())
+                ));
+
+        Map<String, Long> result = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Long>> entry : nodeIdsByBizId.entrySet()) {
+            List<Long> distinctNodeIds = entry.getValue().stream()
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            if (distinctNodeIds.isEmpty()) {
+                continue;
+            }
+            if (distinctNodeIds.size() > 1) {
+                throw CatalogException.bizBoundToMultipleNodes(entry.getKey(), bizType, distinctNodeIds);
+            }
+            result.put(entry.getKey(), distinctNodeIds.get(0));
+        }
+        return result;
     }
 
     private void normalizeSiblingSorts(Long parentId) {

@@ -26,16 +26,41 @@ public interface CatalogService {
 
     void deleteNode(Long nodeId, boolean recursive);
 
+    /**
+     * 将业务对象绑定到单个叶子节点。
+     *
+     * <p>目录节点可以只是容器，不要求一定绑定业务对象；但同一个
+     * {@code bizType + bizId} 最多只能绑定一个目录节点。</p>
+     */
     void bind(Long nodeId, String bizId, String bizType);
 
+    /**
+     * 兼容保留的批量绑定入口。
+     *
+     * <p>单个业务对象只能绑定一个节点，因此该方法仅接受单个有效节点 ID。
+     * 多组一对一绑定请使用 {@link #batchBindByBizIds(List, List, String)}。</p>
+     */
+    @Deprecated
     void batchBind(List<Long> nodeIds, String bizId, String bizType);
 
+    /**
+     * 按顺序批量执行“一对一”业务绑定。
+     *
+     * <p>{@code nodeIds} 与 {@code bizIds} 需要一一对应，适用于批量创建叶子节点后，
+     * 再将多个业务对象分别绑定到各自节点的场景。</p>
+     */
     void batchBindByBizIds(List<Long> nodeIds, List<String> bizIds, String bizType);
 
     void unbind(Long nodeId, String bizId, String bizType);
 
     List<CatalogNode> tree();
 
+    /**
+     * 查询业务对象绑定节点的唯一路径。
+     *
+     * <p>当业务对象未绑定任何节点时返回空列表；如果历史数据出现多节点绑定，
+     * 将抛出异常而不是静默返回其中一条路径。</p>
+     */
     List<CatalogNode> getBizPath(String bizId, String bizType);
 
     List<Long> getNodeIds(String bizId, String bizType);

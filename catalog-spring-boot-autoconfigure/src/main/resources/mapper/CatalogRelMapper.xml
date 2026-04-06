@@ -41,6 +41,16 @@
         WHERE biz_id = #{bizId} AND biz_type = #{bizType}
     </select>
 
+    <select id="selectByBizIds" resultMap="BaseResultMap">
+        SELECT id, node_id, biz_id, biz_type
+        FROM catalog_rel
+        WHERE biz_type = #{bizType}
+          AND biz_id IN
+        <foreach collection="bizIds" item="bizId" open="(" separator="," close=")">
+            #{bizId}
+        </foreach>
+    </select>
+
     <select id="selectByNode" resultMap="BaseResultMap">
         SELECT id, node_id, biz_id, biz_type
         FROM catalog_rel

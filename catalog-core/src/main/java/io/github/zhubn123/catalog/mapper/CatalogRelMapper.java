@@ -24,6 +24,8 @@ public interface CatalogRelMapper {
 
     List<CatalogRel> selectByBiz(String bizId, String bizType);
 
+    List<CatalogRel> selectByBizIds(List<String> bizIds, String bizType);
+
     List<CatalogRel> selectByNode(Long nodeId, String bizType);
 
     List<String> selectBizIdsByNodeIds(List<Long> nodeIds, String bizType);

@@ -60,6 +60,7 @@ public class CatalogController {
     }
 
     @PostMapping("/bind/batch")
+    @Deprecated
     public void batchBind(String nodeIds, String bizId, String bizType) {
         if (nodeIds == null || nodeIds.isBlank()) {
             return;
@@ -70,6 +71,24 @@ public class CatalogController {
                 .map(Long::valueOf)
                 .toList();
         catalogService.batchBind(nodeIdList, bizId, bizType);
+    }
+
+    @PostMapping("/bind/pairs")
+    public void batchBindPairs(String nodeIds, String bizIds, String bizType) {
+        if (nodeIds == null || nodeIds.isBlank() || bizIds == null || bizIds.isBlank()) {
+            return;
+        }
+
+        List<Long> nodeIdList = java.util.Arrays.stream(nodeIds.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
+                .toList();
+        List<String> bizIdList = java.util.Arrays.stream(bizIds.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        catalogService.batchBindByBizIds(nodeIdList, bizIdList, bizType);
     }
 
     @PostMapping("/unbind")
