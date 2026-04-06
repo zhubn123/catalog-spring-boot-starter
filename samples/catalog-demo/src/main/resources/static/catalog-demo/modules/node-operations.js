@@ -24,7 +24,7 @@ export function createNodeActions(context) {
             if (addForm.parentId) {
                 params.parentId = addForm.parentId;
             }
-            await api.post("/catalog/node", params);
+            await api.postJson("/catalog/node", params);
             ElMessage.success("添加成功");
             addForm.name = "";
             await loadTree();
@@ -40,11 +40,11 @@ export function createNodeActions(context) {
         }
         try {
             const names = batchAddForm.names.split(",").map((item) => item.trim()).filter(Boolean);
-            const params = { names: names.join(",") };
+            const params = { names };
             if (batchAddForm.parentId) {
                 params.parentId = batchAddForm.parentId;
             }
-            await api.post("/catalog/node/batch", params);
+            await api.postJson("/catalog/node/batch", params);
             ElMessage.success(`批量添加 ${names.length} 个节点成功`);
             batchAddForm.names = "";
             await loadTree();
@@ -66,7 +66,7 @@ export function createNodeActions(context) {
             if (moveForm.targetIndex) {
                 params.targetIndex = moveForm.targetIndex;
             }
-            await api.post("/catalog/move", params);
+            await api.postJson("/catalog/move", params);
             ElMessage.success("移动成功");
             await loadTree();
         } catch (error) {
@@ -90,7 +90,7 @@ export function createNodeActions(context) {
             if (updateForm.sort !== "") {
                 params.sort = updateForm.sort;
             }
-            await api.post("/catalog/node/update", params);
+            await api.postJson("/catalog/node/update", params);
             ElMessage.success("更新成功");
             await loadTree();
         } catch (error) {
@@ -105,7 +105,7 @@ export function createNodeActions(context) {
                 "删除确认",
                 { type: "warning" }
             );
-            await api.post("/catalog/node/delete", { nodeId: node.id, recursive: true });
+            await api.postJson("/catalog/node/delete", { nodeId: node.id, recursive: true });
             ElMessage.success("删除成功");
             selectedNode.value = null;
             await loadTree();
@@ -136,7 +136,7 @@ export function createNodeActions(context) {
 
     const saveEdit = async () => {
         try {
-            await api.post("/catalog/node/update", {
+            await api.postJson("/catalog/node/update", {
                 nodeId: editForm.id,
                 name: editForm.name,
                 code: editForm.code,

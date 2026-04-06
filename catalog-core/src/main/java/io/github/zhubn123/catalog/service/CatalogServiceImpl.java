@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Comparator;
 import java.util.stream.Collectors;
 
 /**
@@ -321,9 +322,12 @@ public class CatalogServiceImpl implements CatalogService {
         relMapper.delete(nodeId, trimToNull(bizId), trimToNull(bizType));
     }
 
+    /**
+     * 返回完整目录的扁平节点列表，顺序与树前序遍历一致。
+     */
     @Override
-    public List<CatalogNode> tree() {
-        return nodeMapper.selectAll();
+    public List<CatalogNode> listNodesInTreeOrder() {
+        return sortNodesForTreeTraversal(nodeMapper.selectAll());
     }
 
     @Override
@@ -399,8 +403,11 @@ public class CatalogServiceImpl implements CatalogService {
         return relMapper.selectBizIdsByNodeIds(nodeIds, bizType);
     }
 
+    /**
+     * 返回用于还原业务局部树的扁平节点列表，包含绑定节点及其祖先节点。
+     */
     @Override
-    public List<CatalogNode> getBizTree(String bizId, String bizType) {
+    public List<CatalogNode> listBizRelatedNodes(String bizId, String bizType) {
         Long boundNodeId = resolveSingleBoundNodeId(trimToNull(bizId), trimToNull(bizType));
         if (boundNodeId == null) {
             return Collections.emptyList();
@@ -424,11 +431,14 @@ public class CatalogServiceImpl implements CatalogService {
             return Collections.emptyList();
         }
 
-        return nodeMapper.selectByIds(new ArrayList<>(relatedNodeIds));
+        return sortNodesForTreeTraversal(nodeMapper.selectByIds(new ArrayList<>(relatedNodeIds)));
     }
 
+    /**
+     * 返回指定节点子树的扁平节点列表，包含当前节点及全部后代节点。
+     */
     @Override
-    public List<CatalogNode> getSubtree(Long nodeId) {
+    public List<CatalogNode> listSubtreeNodes(Long nodeId) {
         CatalogNode node = nodeMapper.selectById(nodeId);
         if (node == null) {
             return Collections.emptyList();
@@ -436,7 +446,7 @@ public class CatalogServiceImpl implements CatalogService {
         if (!StringUtils.hasText(node.getPath())) {
             return List.of(node);
         }
-        return nodeMapper.selectByPathPrefix(node.getPath());
+        return sortNodesForTreeTraversal(nodeMapper.selectByPathPrefix(node.getPath()));
     }
 
     private CatalogNode getRequiredNode(Long nodeId) {
@@ -649,5 +659,75 @@ public class CatalogServiceImpl implements CatalogService {
             }
             expectedSort++;
         }
+    }
+
+    /**
+     * 将节点列表重排为稳定的树前序遍历结果。
+     *
+     * <p>返回顺序遵循两条规则：</p>
+     * <p>1. 同级节点始终按 {@code sort} 升序排列；</p>
+     * <p>2. 父节点之后紧跟其子树，适合直接用于树形展示和遍历。</p>
+     *
+     * <p>这样可以避免继续依赖 {@code /1/10}、{@code /1/2} 这类 path 字符串排序带来的错序问题。</p>
+     */
+    private List<CatalogNode> sortNodesForTreeTraversal(List<CatalogNode> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, CatalogNode> nodeById = nodes.stream()
+                .filter(Objects::nonNull)
+                .filter(node -> node.getId() != null)
+                .collect(Collectors.toMap(
+                        CatalogNode::getId,
+                        node -> node,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+        if (nodeById.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, List<CatalogNode>> childrenByParentId = new LinkedHashMap<>();
+        List<CatalogNode> roots = new ArrayList<>();
+        for (CatalogNode node : nodeById.values()) {
+            Long parentId = normalizeParentId(node.getParentId());
+            // 子树查询或业务相关查询拿到的往往只是局部节点集合，祖先节点可能并不完整。
+            // 这类节点会被当成当前结果集里的“本地根节点”，保证返回顺序仍然可遍历、可展示。
+            if (Objects.equals(parentId, ROOT_PARENT_ID) || !nodeById.containsKey(parentId)) {
+                roots.add(node);
+                continue;
+            }
+            childrenByParentId.computeIfAbsent(parentId, key -> new ArrayList<>()).add(node);
+        }
+
+        Comparator<CatalogNode> comparator = Comparator
+                .comparingInt((CatalogNode node) -> defaultSort(node.getSort()))
+                .thenComparing(node -> node.getId() == null ? Long.MAX_VALUE : node.getId());
+
+        List<CatalogNode> ordered = new ArrayList<>(nodeById.size());
+        appendNodesInTreeOrder(roots, childrenByParentId, comparator, ordered);
+        return ordered;
+    }
+
+    /**
+     * 递归按前序遍历顺序追加节点。
+     */
+    private void appendNodesInTreeOrder(
+            List<CatalogNode> currentLevel,
+            Map<Long, List<CatalogNode>> childrenByParentId,
+            Comparator<CatalogNode> comparator,
+            List<CatalogNode> ordered
+    ) {
+        if (currentLevel == null || currentLevel.isEmpty()) {
+            return;
+        }
+
+        currentLevel.stream()
+                .sorted(comparator)
+                .forEach(node -> {
+                    ordered.add(node);
+                    appendNodesInTreeOrder(childrenByParentId.get(node.getId()), childrenByParentId, comparator, ordered);
+                });
     }
 }

@@ -20,6 +20,16 @@ export function createApi({ baseUrl, logApi }) {
                 throw error;
             }
         },
+        async postJson(url, data) {
+            try {
+                const response = await axios.post(baseUrl + url, data);
+                logApi("POST", url, true, response.status);
+                return response.data;
+            } catch (error) {
+                logApi("POST", url, false, error.response?.status || 0);
+                throw error;
+            }
+        },
         async put(url, data) {
             try {
                 const response = await axios.put(baseUrl + url, data);

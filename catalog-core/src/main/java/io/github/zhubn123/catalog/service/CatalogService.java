@@ -29,7 +29,7 @@ public interface CatalogService {
     /**
      * 将业务对象绑定到单个叶子节点。
      *
-     * <p>目录节点可以只是容器，不要求一定绑定业务对象；但同一个
+     * <p>目录节点可以只作为容器，不要求一定绑定业务对象；但同一个
      * {@code bizType + bizId} 最多只能绑定一个目录节点。</p>
      */
     void bind(Long nodeId, String bizId, String bizType);
@@ -53,7 +53,20 @@ public interface CatalogService {
 
     void unbind(Long nodeId, String bizId, String bizType);
 
-    List<CatalogNode> tree();
+    /**
+     * 按树遍历顺序返回全量节点列表。
+     *
+     * <p>该方法返回的是扁平节点列表，而不是已经组装好的嵌套树结构。</p>
+     */
+    List<CatalogNode> listNodesInTreeOrder();
+
+    /**
+     * 兼容旧命名，仍然返回按树遍历顺序排列的扁平节点列表。
+     */
+    @Deprecated
+    default List<CatalogNode> tree() {
+        return listNodesInTreeOrder();
+    }
 
     /**
      * 查询业务对象绑定节点的唯一路径。
@@ -69,7 +82,33 @@ public interface CatalogService {
 
     List<String> getBizIdsByNodeTree(Long nodeId, String bizType);
 
-    List<CatalogNode> getBizTree(String bizId, String bizType);
+    /**
+     * 返回用于还原业务局部树的节点列表。
+     *
+     * <p>结果包含绑定节点及其祖先节点，返回值仍然是按树遍历顺序排列的扁平列表。</p>
+     */
+    List<CatalogNode> listBizRelatedNodes(String bizId, String bizType);
 
-    List<CatalogNode> getSubtree(Long nodeId);
+    /**
+     * 兼容旧命名，仍然返回用于还原业务局部树的扁平节点列表。
+     */
+    @Deprecated
+    default List<CatalogNode> getBizTree(String bizId, String bizType) {
+        return listBizRelatedNodes(bizId, bizType);
+    }
+
+    /**
+     * 返回指定节点子树的节点列表。
+     *
+     * <p>结果包含当前节点及其全部后代节点，返回值仍然是按树遍历顺序排列的扁平列表。</p>
+     */
+    List<CatalogNode> listSubtreeNodes(Long nodeId);
+
+    /**
+     * 兼容旧命名，仍然返回子树节点的扁平列表。
+     */
+    @Deprecated
+    default List<CatalogNode> getSubtree(Long nodeId) {
+        return listSubtreeNodes(nodeId);
+    }
 }

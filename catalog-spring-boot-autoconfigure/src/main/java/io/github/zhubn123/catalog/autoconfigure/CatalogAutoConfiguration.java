@@ -12,7 +12,8 @@ import org.springframework.context.annotation.Configuration;
 /**
  * 目录模块自动配置。
  *
- * <p>在满足条件时自动注册目录服务、控制器以及 MyBatis Mapper 扫描。</p>
+ * <p>在满足条件时自动注册目录服务、REST 控制器以及统一异常处理器，
+ * 并开启 MyBatis Mapper 扫描。</p>
  *
  * @author zhubn
  * @date 2026/4/2
@@ -34,5 +35,12 @@ public class CatalogAutoConfiguration {
     @ConditionalOnProperty(prefix = "catalog", name = "enable-rest-api", havingValue = "true", matchIfMissing = true)
     public CatalogController catalogController() {
         return new CatalogController();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "catalog", name = "enable-rest-api", havingValue = "true", matchIfMissing = true)
+    public CatalogExceptionHandler catalogExceptionHandler() {
+        return new CatalogExceptionHandler();
     }
 }

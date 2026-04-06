@@ -112,10 +112,16 @@ List<CatalogNode> path = catalogService.getBizPath("DELIVER-001", "deliver");
 
 | API | 方法 | 说明 |
 |-----|------|------|
-| `/catalog/tree` | GET | 获取完整树 |
+| `/catalog/nodes` | GET | 获取完整目录的扁平节点列表 |
+| `/catalog/tree` | GET | 兼容旧接口，仍返回扁平节点列表 |
 | `/catalog/bizPath` | GET | 查询业务路径 |
-| `/catalog/bizTree` | GET | 查询业务子树 |
-| `/catalog/subtree` | GET | 查询节点子树 |
+| `/catalog/bizTreeNodes` | GET | 查询业务局部树对应的扁平节点列表 |
+| `/catalog/bizTree` | GET | 兼容旧接口，仍返回扁平节点列表 |
+| `/catalog/subtreeNodes` | GET | 查询指定节点子树的扁平节点列表 |
+| `/catalog/subtree` | GET | 兼容旧接口，仍返回扁平节点列表 |
+
+> `nodes`、`bizTreeNodes`、`subtreeNodes` 返回的都是按树遍历顺序排列的扁平节点列表，
+> 如果调用方需要真正的嵌套树结构，请在前端或上层服务中自行组装。
 
 ## 🔧 配置项
 

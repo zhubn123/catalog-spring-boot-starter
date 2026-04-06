@@ -15,7 +15,7 @@ export function createBindingActions(context) {
             return;
         }
         try {
-            await api.post("/catalog/bind", {
+            await api.postJson("/catalog/bind", {
                 nodeId: bindForm.nodeId,
                 bizId: bindForm.bizId,
                 bizType: bindForm.bizType
@@ -41,9 +41,9 @@ export function createBindingActions(context) {
                 ElMessage.warning("节点ID和业务ID数量必须一致");
                 return;
             }
-            await api.post("/catalog/bind/pairs", {
-                nodeIds: nodeIds.join(","),
-                bizIds: bizIds.join(","),
+            await api.postJson("/catalog/bind/pairs", {
+                nodeIds: nodeIds.map((item) => Number(item)),
+                bizIds,
                 bizType: batchBindForm.bizType
             });
             ElMessage.success("批量绑定成功");
@@ -58,7 +58,7 @@ export function createBindingActions(context) {
             return;
         }
         try {
-            await api.post("/catalog/unbind", {
+            await api.postJson("/catalog/unbind", {
                 nodeId: unbindForm.nodeId,
                 bizId: unbindForm.bizId,
                 bizType: unbindForm.bizType
@@ -71,7 +71,7 @@ export function createBindingActions(context) {
 
     const quickUnbind = async (binding) => {
         try {
-            await api.post("/catalog/unbind", {
+            await api.postJson("/catalog/unbind", {
                 nodeId: selectedNode.value.id,
                 bizId: binding.bizId,
                 bizType: binding.bizType

@@ -55,7 +55,7 @@ export function createQueryActions(context) {
             const result = await api.get(`/catalog/nodeBiz?nodeId=${queryNodeBizForm.nodeId}&bizType=${queryNodeBizForm.bizType}`);
             nodeBizResult.value = result;
             if (result.length === 0) {
-                ElMessage.info("该子树下无业务绑定");
+                ElMessage.info("该子树下暂无业务绑定");
             }
         } catch (error) {
             ElMessage.error("查询失败: " + (error.response?.data?.message || error.message));
@@ -68,10 +68,10 @@ export function createQueryActions(context) {
             return;
         }
         try {
-            const result = await api.get(`/catalog/bizTree?bizId=${queryBizTreeForm.bizId}&bizType=${queryBizTreeForm.bizType}`);
+            const result = await api.get(`/catalog/bizTreeNodes?bizId=${queryBizTreeForm.bizId}&bizType=${queryBizTreeForm.bizType}`);
             bizTreeResult.value = result;
             if (result.length === 0) {
-                ElMessage.info("未找到相关子树");
+                ElMessage.info("未找到相关节点");
             } else {
                 ElMessage.success(`找到 ${result.length} 个相关节点`);
             }
@@ -86,10 +86,10 @@ export function createQueryActions(context) {
             return;
         }
         try {
-            const result = await api.get(`/catalog/subtree?nodeId=${querySubtreeForm.nodeId}`);
+            const result = await api.get(`/catalog/subtreeNodes?nodeId=${querySubtreeForm.nodeId}`);
             subtreeResult.value = result;
             if (result.length === 0) {
-                ElMessage.info("未找到子树");
+                ElMessage.info("未找到子树节点");
             } else {
                 ElMessage.success(`子树包含 ${result.length} 个节点`);
             }

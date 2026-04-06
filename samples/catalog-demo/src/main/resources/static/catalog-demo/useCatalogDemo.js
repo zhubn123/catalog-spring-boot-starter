@@ -77,7 +77,7 @@ export function createCatalogDemoApp() {
 
             const loadTree = async () => {
                 try {
-                    const nodes = await api.get("/catalog/tree");
+                    const nodes = await api.get("/catalog/nodes");
                     treeData.value = buildTree(nodes);
                 } catch (error) {
                     ElMessage.error("加载树失败: " + (error.response?.data?.message || error.message));
