@@ -1,5 +1,7 @@
 package io.github.zhubn123.catalog.autoconfigure;
 
+import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
+import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
 import io.github.zhubn123.catalog.service.CatalogService;
 import io.github.zhubn123.catalog.service.CatalogServiceImpl;
 import org.mybatis.spring.annotation.MapperScan;
@@ -26,15 +28,15 @@ public class CatalogAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public CatalogService catalogService() {
-        return new CatalogServiceImpl();
+    public CatalogService catalogService(CatalogNodeMapper nodeMapper, CatalogRelMapper relMapper) {
+        return new CatalogServiceImpl(nodeMapper, relMapper);
     }
 
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnProperty(prefix = "catalog", name = "enable-rest-api", havingValue = "true", matchIfMissing = true)
-    public CatalogController catalogController() {
-        return new CatalogController();
+    public CatalogController catalogController(CatalogService catalogService) {
+        return new CatalogController(catalogService);
     }
 
     @Bean

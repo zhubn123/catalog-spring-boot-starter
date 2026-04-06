@@ -5,7 +5,6 @@ import io.github.zhubn123.catalog.domain.CatalogRel;
 import io.github.zhubn123.catalog.exception.CatalogException;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -33,11 +32,13 @@ public class CatalogServiceImpl implements CatalogService {
 
     private static final Long ROOT_PARENT_ID = 0L;
 
-    @Autowired
-    private CatalogNodeMapper nodeMapper;
+    private final CatalogNodeMapper nodeMapper;
+    private final CatalogRelMapper relMapper;
 
-    @Autowired
-    private CatalogRelMapper relMapper;
+    public CatalogServiceImpl(CatalogNodeMapper nodeMapper, CatalogRelMapper relMapper) {
+        this.nodeMapper = nodeMapper;
+        this.relMapper = relMapper;
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)

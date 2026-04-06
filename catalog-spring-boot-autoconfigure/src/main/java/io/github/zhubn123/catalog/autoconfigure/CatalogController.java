@@ -2,7 +2,6 @@ package io.github.zhubn123.catalog.autoconfigure;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import io.github.zhubn123.catalog.service.CatalogService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,8 +25,11 @@ import java.util.Objects;
 @RequestMapping("/catalog")
 public class CatalogController {
 
-    @Autowired
-    private CatalogService catalogService;
+    private final CatalogService catalogService;
+
+    public CatalogController(CatalogService catalogService) {
+        this.catalogService = catalogService;
+    }
 
     /**
      * 新增单个目录节点。
