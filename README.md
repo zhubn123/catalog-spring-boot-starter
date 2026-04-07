@@ -112,6 +112,11 @@ List<CatalogNode> path = catalogService.getBizPath("DELIVER-001", "deliver");
 
 ## 📖 API 文档
 
+完整 REST 接口说明、请求体示例、错误码和接口选择建议见：
+
+- [docs/api-reference.md](docs/api-reference.md)
+
+
 ### 节点操作
 
 | API | 方法 | 说明 |

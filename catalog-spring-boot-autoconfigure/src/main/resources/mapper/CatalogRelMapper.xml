@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.github.zhubn123.catalog.mapper.CatalogRelMapper">
 
@@ -60,6 +60,15 @@
         </if>
     </select>
 
+    <select id="selectByNodeIds" resultMap="BaseResultMap">
+        SELECT id, node_id, biz_id, biz_type
+        FROM catalog_rel
+        WHERE node_id IN
+        <foreach collection="nodeIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <select id="selectBizIdsByNodeIds" resultType="java.lang.String">
         SELECT DISTINCT biz_id FROM catalog_rel
         WHERE node_id IN
@@ -79,4 +88,3 @@
     </select>
 
 </mapper>
-

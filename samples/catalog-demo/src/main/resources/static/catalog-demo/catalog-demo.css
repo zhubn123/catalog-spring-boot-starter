@@ -309,6 +309,50 @@ body {
     background: var(--warning);
 }
 
+.binding-count-badge,
+.binding-type-chip {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.binding-count-badge {
+    background: #0f766e;
+    color: #ffffff;
+}
+
+.binding-type-chip {
+    background: #eef5ff;
+    color: var(--sidebar-accent);
+}
+
+.binding-preview {
+    max-width: 220px;
+    color: var(--text-subtle);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.binding-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.binding-summary-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.binding-summary-text {
+    font-size: 13px;
+    font-weight: 500;
+}
+
 .result-block {
     margin-top: 10px;
 }

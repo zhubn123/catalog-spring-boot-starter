@@ -56,6 +56,8 @@
                                 <span class="node-id">#{{ data.id }}</span>
                                 <span v-if="isLeaf(data)" class="leaf-badge">叶子</span>
                                 <span v-if="data.bindable" class="bindable-badge">可绑定</span>
+                                <span v-if="getBindingCount(data) > 0" class="binding-count-badge">已绑 {{ getBindingCount(data) }}</span>
+                                <span v-if="getBindingPreview(data)" class="binding-preview">{{ getBindingPreview(data) }}</span>
                             </span>
                             <span class="node-actions">
                                 <el-button type="primary" link size="small" @click.stop="showAddChildDialog(data)">
@@ -116,6 +118,17 @@
                                 <div class="summary-item summary-item-wide">
                                     <span class="summary-label">节点路径</span>
                                     <span class="summary-value">{{ selectedNode.path || '-' }}</span>
+                                </div>
+                                <div class="summary-item summary-item-wide">
+                                    <span class="summary-label">树节点扩展摘要</span>
+                                    <div v-if="getBindingCount(selectedNode) > 0" class="binding-summary">
+                                        <div class="binding-summary-tags">
+                                            <span class="binding-count-badge">已绑 {{ getBindingCount(selectedNode) }}</span>
+                                            <span v-for="bizType in getBindingTypes(selectedNode)" :key="bizType" class="binding-type-chip">{{ bizType }}</span>
+                                        </div>
+                                        <span class="summary-value binding-summary-text">{{ getBindingPreview(selectedNode, 3) }}</span>
+                                    </div>
+                                    <span v-else class="summary-value">当前节点暂无直接业务绑定摘要</span>
                                 </div>
                             </div>
                             <el-empty v-else description="先从左侧选择一个节点，再继续操作"></el-empty>
@@ -292,6 +305,8 @@
                                                 <el-icon v-else><document></document></el-icon>
                                                 <span>{{ data.name }}</span>
                                                 <span class="node-id">#{{ data.id }}</span>
+                                                <span v-if="getBindingCount(data) > 0" class="binding-count-badge">已绑 {{ getBindingCount(data) }}</span>
+                                                <span v-if="getBindingPreview(data)" class="binding-preview">{{ getBindingPreview(data) }}</span>
                                             </span>
                                         </span>
                                     </template>

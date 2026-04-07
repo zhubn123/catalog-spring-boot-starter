@@ -1,5 +1,5 @@
 import { createApi, extractErrorMessage } from "./api.js";
-import { findNodeById, isLeaf, normalizeTree } from "./tree-utils.js";
+import { findNodeById, getBindingCount, getBindingPreview, getBindingTypes, isLeaf, normalizeTree } from "./tree-utils.js";
 import { createNodeActions } from "./modules/node-operations.js";
 import { createBindingActions } from "./modules/binding-operations.js";
 import { createQueryActions } from "./modules/query-operations.js";
@@ -308,6 +308,9 @@ export function createCatalogDemoApp() {
                 loadTree,
                 loadDirectBindings,
                 isLeaf,
+                getBindingCount,
+                getBindingPreview,
+                getBindingTypes,
                 handleNodeClick,
                 allowDrop,
                 allowDrag,

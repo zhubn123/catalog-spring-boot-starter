@@ -20,6 +20,33 @@ export function isLeaf(node) {
     return !node?.children || node.children.length === 0;
 }
 
+export function getBindingSummary(node) {
+    return node?.extensions?.bindingSummary ?? null;
+}
+
+export function getBindingCount(node) {
+    const count = getBindingSummary(node)?.count;
+    return typeof count === "number" ? count : 0;
+}
+
+export function getBindingTypes(node) {
+    const bizTypes = getBindingSummary(node)?.bizTypes;
+    return Array.isArray(bizTypes) ? bizTypes : [];
+}
+
+export function getBindingPreview(node, limit = 2) {
+    const bizIds = getBindingSummary(node)?.bizIds;
+    if (!Array.isArray(bizIds) || bizIds.length === 0) {
+        return "";
+    }
+
+    const previewItems = bizIds.slice(0, limit);
+    const remainingCount = bizIds.length - previewItems.length;
+    return remainingCount > 0
+        ? `${previewItems.join("、")} 等 ${bizIds.length} 个业务对象`
+        : previewItems.join("、");
+}
+
 export function findNodeById(nodes, nodeId) {
     if (!Array.isArray(nodes) || nodeId == null) {
         return null;

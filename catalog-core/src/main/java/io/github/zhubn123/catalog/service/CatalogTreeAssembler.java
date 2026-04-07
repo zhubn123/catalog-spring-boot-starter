@@ -82,7 +82,10 @@ public final class CatalogTreeAssembler {
     }
 
     /**
-     * 按顺序执行扩展策略，给未来的叶子节点业务装配、统计信息等能力预留挂点。
+     * 先让每个增强器按整棵树做一次预取，再逐节点执行组装。
+     *
+     * <p>这样既兼容最简单的单节点增强写法，也能支持 sample 中这种“先批量取绑定关系，
+     * 再逐节点填充摘要”的扩展模式，避免每个叶子节点都单独查询一次。</p>
      */
     private void applyEnrichers(
             Map<Long, CatalogTreeNode> treeNodeById,
@@ -93,13 +96,19 @@ public final class CatalogTreeAssembler {
             return;
         }
         CatalogTreeAssembleContext effectiveContext = context == null ? CatalogTreeAssembleContext.fullTree() : context;
+        List<CatalogNode> sourceNodes = List.copyOf(sourceNodeById.values());
+        List<Object> preparedStates = new ArrayList<>(enrichers.size());
+        for (CatalogTreeNodeEnricher enricher : enrichers) {
+            preparedStates.add(enricher.prepare(sourceNodes, effectiveContext));
+        }
+
         for (CatalogTreeNode treeNode : treeNodeById.values()) {
             CatalogNode sourceNode = sourceNodeById.get(treeNode.getId());
             if (sourceNode == null) {
                 continue;
             }
-            for (CatalogTreeNodeEnricher enricher : enrichers) {
-                enricher.enrich(treeNode, sourceNode, effectiveContext);
+            for (int index = 0; index < enrichers.size(); index++) {
+                enrichers.get(index).enrich(treeNode, sourceNode, effectiveContext, preparedStates.get(index));
             }
         }
     }
