@@ -19,7 +19,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
@@ -228,6 +230,44 @@ class CatalogServiceImplTest {
                     .extracting(CatalogTreeNode::getId)
                     .containsExactly(11L);
         });
+    }
+
+    @Test
+    void moveNodeReordersSiblingsWithinSameParent() {
+        CatalogNode parent = node(1L, 0L, "Root", "/1", 1, 1);
+        CatalogNode first = node(10L, 1L, "First", "/1/10", 2, 1);
+        CatalogNode second = node(11L, 1L, "Second", "/1/11", 2, 2);
+        CatalogNode third = node(12L, 1L, "Third", "/1/12", 2, 3);
+        when(nodeMapper.selectById(11L)).thenReturn(second, second);
+        when(nodeMapper.selectById(1L)).thenReturn(parent);
+        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(first, second, third));
+        when(nodeMapper.selectMaxSortByParent(1L)).thenReturn(3);
+
+        service.moveNode(11L, 1L, 0);
+
+        verify(nodeMapper).incrementSortRange(1L, 1, 1, 11L);
+        verify(nodeMapper).updateSort(11L, 1);
+        verify(nodeMapper, never()).updateParentLevelPathSort(anyLong(), anyLong(), anyInt(), anyString(), anyInt());
+        verify(nodeMapper, never()).moveSubtree(anyString(), anyString(), anyInt());
+    }
+
+    @Test
+    void moveNodeUpdatesParentAndSubtreeWhenMovingAcrossParents() {
+        CatalogNode movingNode = node(11L, 1L, "Second", "/1/11", 2, 2);
+        CatalogNode newParent = node(20L, 0L, "Archive", "/20", 1, 1);
+        CatalogNode sibling = node(10L, 1L, "First", "/1/10", 2, 1);
+        when(nodeMapper.selectById(11L)).thenReturn(movingNode, movingNode);
+        when(nodeMapper.selectById(20L)).thenReturn(newParent);
+        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(sibling, movingNode));
+        when(nodeMapper.selectByParentId(20L)).thenReturn(Collections.emptyList());
+        when(nodeMapper.selectMaxSortByParent(20L)).thenReturn(null);
+
+        service.moveNode(11L, 20L, null);
+
+        verify(nodeMapper).decrementSortAfter(1L, 2);
+        verify(nodeMapper).incrementSortFrom(20L, 1);
+        verify(nodeMapper).updateParentLevelPathSort(11L, 20L, 2, "/20/11", 1);
+        verify(nodeMapper).moveSubtree("/1/11", "/20/11", 0);
     }
 
     @Test
