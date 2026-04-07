@@ -110,6 +110,46 @@ catalogService.bind(deliveryId, "DELIVER-001", "deliver");
 List<CatalogNode> path = catalogService.getBizPath("DELIVER-001", "deliver");
 ```
 
+
+## 🎬 演示
+
+### Demo 入口
+
+启动 sample 后，打开index.html：
+
+```text
+samples/catalog-demo/src/main/resources/static/catalog-demo/index.html
+```
+
+### 展示顺序
+
+1. 目录树浏览与拖拽移动
+2. 叶子节点业务绑定与解绑
+3. 业务路径、局部树、子树查询
+4. sample 前端 API 日志与后端请求/SQL 日志
+
+
+1. 目录树主界面
+   ![目录树主界面](docs/demo/01-tree-overview.png)
+   展示内容：左侧目录树、右侧节点概览、拖拽排序入口
+
+2. 查询与绑定
+   ![查询与绑定](docs/demo/02-binding-and-query.png)
+   展示内容：叶子节点绑定、路径查询、局部树查询结果
+
+3. 业务示例
+   ![业务示例](docs/demo/03-business-example.png)
+   展示内容：二级目录 -> 三级级目录 -> 一级目录后绑定+二级目录挂载
+
+4. API日志
+   ![API 日志](docs/demo/04-debug-logs.png)
+   展示内容：前端 API 日志页签，以及 sample 控制台里的请求/SQL 日志
+
+### 演示说明
+
+- `/catalog/tree` 更适合 sample、管理后台和小规模场景演示。
+- 真正的业务接入更推荐按父节点逐层加载，而不是默认整树全量查询。
+- sample 当前重点展示的是目录树能力、绑定语义和调试链路，不是完整业务系统。
 ## 📖 API 文档
 
 完整 REST 接口说明、请求体示例、错误码和接口选择建议见：

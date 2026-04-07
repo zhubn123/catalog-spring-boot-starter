@@ -33,6 +33,7 @@ export function createCatalogDemoApp() {
             const queryTreeTitle = ref("");
             const queryTreeSummary = ref("");
             const contractNodeId = ref("");
+            const apiBase = API_BASE;
 
             const treeProps = {
                 children: "children",
@@ -63,10 +64,9 @@ export function createCatalogDemoApp() {
 
             const selectedNodeId = computed(() => selectedNode.value?.id ?? "");
 
-            const logApi = (method, url, success, status) => {
-                const time = new Date().toLocaleTimeString();
-                apiLogs.value.unshift({ method, url, success, status, time });
-                if (apiLogs.value.length > 80) {
+            const logApi = (entry) => {
+                apiLogs.value.unshift(entry);
+                if (apiLogs.value.length > 120) {
                     apiLogs.value.pop();
                 }
             };
@@ -74,6 +74,9 @@ export function createCatalogDemoApp() {
             const clearApiLogs = () => {
                 apiLogs.value = [];
             };
+
+            const hasLogText = (value) => typeof value === "string" && value.trim().length > 0;
+            const getApiLogStatusText = (log) => log.success ? "成功" : "失败";
 
             const api = createApi({ baseUrl: API_BASE, logApi });
 
@@ -283,6 +286,7 @@ export function createCatalogDemoApp() {
                 selectedNodeId,
                 activeTab,
                 apiLogs,
+                apiBase,
                 directBindings,
                 bindingListBizType,
                 queryTreeData,
@@ -305,6 +309,8 @@ export function createCatalogDemoApp() {
                 contractForm,
                 attachForm,
                 clearApiLogs,
+                hasLogText,
+                getApiLogStatusText,
                 loadTree,
                 loadDirectBindings,
                 isLeaf,

@@ -358,20 +358,59 @@
 
                     <el-tab-pane label="API 日志" name="log">
                         <div class="panel">
-                            <div class="panel-title">
-                                请求日志
-                                <el-button type="primary" link size="small" @click="clearApiLogs">清空</el-button>
+                            <div class="panel-title panel-title-inline">
+                                <span>调试日志</span>
+                                <div class="panel-title-actions">
+                                    <el-tag type="info" size="small">基址 {{ apiBase }}</el-tag>
+                                    <el-button type="primary" link size="small" @click="clearApiLogs">清空</el-button>
+                                </div>
                             </div>
+                            <p class="muted-tip">这里会记录 sample 前端发出的请求参数、响应摘要和耗时；后端控制台会同步打印 <code>/catalog</code>、<code>/contract</code>、<code>/project</code> 的请求日志。</p>
                             <div class="api-log">
                                 <div v-if="apiLogs.length === 0" class="empty-log">暂无请求记录</div>
-                                <div v-for="(log, index) in apiLogs" :key="index" class="log-item">
-                                    <span class="method" :class="log.method.toLowerCase()">{{ log.method }}</span>
-                                    <span class="url">{{ log.url }}</span>
-                                    <span class="status" :class="log.success ? 'success' : 'error'">
-                                        {{ log.success ? '成功' : '失败' }} {{ log.status }}
-                                    </span>
-                                    <span class="log-time">{{ log.time }}</span>
-                                </div>
+                                <details v-for="(log, index) in apiLogs" :key="log.id || index" class="log-item" :open="index === 0">
+                                    <summary class="log-summary">
+                                        <span class="method" :class="log.method.toLowerCase()">{{ log.method }}</span>
+                                        <span class="url">{{ log.url }}</span>
+                                        <span class="status" :class="log.success ? 'success' : 'error'">
+                                            {{ getApiLogStatusText(log) }} {{ log.status }}
+                                        </span>
+                                        <span class="log-cost">{{ log.durationMs }} ms</span>
+                                        <span class="log-time">{{ log.time }}</span>
+                                    </summary>
+                                    <div class="log-detail-grid">
+                                        <div class="log-detail-card">
+                                            <div class="log-detail-title">请求信息</div>
+                                            <div class="log-line">
+                                                <span class="log-label">完整地址</span>
+                                                <code>{{ log.fullUrl }}</code>
+                                            </div>
+                                            <div v-if="hasLogText(log.requestParamsText)" class="log-line">
+                                                <span class="log-label">Query</span>
+                                                <pre>{{ log.requestParamsText }}</pre>
+                                            </div>
+                                            <div v-if="hasLogText(log.requestBodyText)" class="log-line">
+                                                <span class="log-label">Body</span>
+                                                <pre>{{ log.requestBodyText }}</pre>
+                                            </div>
+                                        </div>
+                                        <div class="log-detail-card">
+                                            <div class="log-detail-title">{{ log.success ? '响应信息' : '错误信息' }}</div>
+                                            <div class="log-line">
+                                                <span class="log-label">状态</span>
+                                                <span>{{ log.status }} {{ log.statusText || '' }}</span>
+                                            </div>
+                                            <div v-if="hasLogText(log.errorMessage)" class="log-line">
+                                                <span class="log-label">异常</span>
+                                                <pre>{{ log.errorMessage }}</pre>
+                                            </div>
+                                            <div v-if="hasLogText(log.responseBodyText)" class="log-line">
+                                                <span class="log-label">{{ log.success ? '响应体' : '错误响应' }}</span>
+                                                <pre>{{ log.responseBodyText }}</pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </details>
                             </div>
                         </div>
                     </el-tab-pane>

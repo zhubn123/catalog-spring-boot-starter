@@ -4,12 +4,24 @@ server:
 spring:
   profiles:
     default: local
+  output:
+    ansi:
+      enabled: always
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   configuration:
     map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 catalog:
   enabled: true
   enable-rest-api: true
+
+logging:
+  level:
+    root: info
+    com.example.demo: info
+    io.github.zhubn123.catalog: info
+  pattern:
+    console: "%clr(%d{HH:mm:ss.SSS}){faint} %clr(%-5level) %clr([%thread]){faint} %clr(%logger{36}){cyan} - %msg%n"

@@ -486,3 +486,117 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+.panel-title-inline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.panel-title-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.api-log {
+    max-height: 420px;
+}
+
+.log-item {
+    border-radius: 10px;
+    padding: 0;
+    background: rgba(15, 23, 42, 0.35);
+    margin-bottom: 10px;
+}
+
+.log-item:last-child {
+    margin-bottom: 0;
+}
+
+.log-item[open] {
+    background: rgba(15, 23, 42, 0.58);
+}
+
+.log-summary {
+    list-style: none;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    cursor: pointer;
+    padding: 10px 12px;
+}
+
+.log-summary::-webkit-details-marker {
+    display: none;
+}
+
+.log-cost {
+    color: #fcd34d;
+    margin-left: auto;
+}
+
+.log-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 0 12px 12px;
+}
+
+.log-detail-card {
+    background: rgba(15, 23, 42, 0.68);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.log-detail-title {
+    color: #f8fafc;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.log-line {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.log-line:last-child {
+    margin-bottom: 0;
+}
+
+.log-label {
+    color: #94a3b8;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.log-line pre,
+.log-line code {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.92);
+    color: #e2e8f0;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media (max-width: 900px) {
+    .log-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .log-cost {
+        margin-left: 0;
+    }
+}
