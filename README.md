@@ -45,8 +45,7 @@ CREATE TABLE catalog_rel (
     biz_id VARCHAR(100) NOT NULL,
     biz_type VARCHAR(50) NOT NULL,
     UNIQUE KEY uk_biz (biz_id, biz_type),
-    INDEX idx_node_type (node_id, biz_type),
-    INDEX idx_biz (biz_id, biz_type)
+    INDEX idx_node_type (node_id, biz_type)
 );
 ```
 
@@ -54,7 +53,6 @@ CREATE TABLE catalog_rel (
 > - 目录节点可以只作为容器，不必绑定业务对象
 > - 只有叶子节点允许绑定业务对象
 > - 同一 `biz_type + biz_id` 最多绑定一个目录节点
-
 ### 3. 配置 sample 本地环境
 
 ```yaml

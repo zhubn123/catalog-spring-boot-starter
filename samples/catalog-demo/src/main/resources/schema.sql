@@ -17,6 +17,6 @@ CREATE TABLE IF NOT EXISTS catalog_rel (
     node_id BIGINT NOT NULL COMMENT '目录节点ID',
     biz_id VARCHAR(100) NOT NULL COMMENT '业务对象ID',
     biz_type VARCHAR(50) NOT NULL COMMENT '业务类型',
-    UNIQUE KEY uk_node_biz (node_id, biz_id, biz_type),
-    INDEX idx_biz (biz_id, biz_type)
+    UNIQUE KEY uk_biz (biz_id, biz_type),
+    INDEX idx_node_type (node_id, biz_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='业务绑定关系表';
