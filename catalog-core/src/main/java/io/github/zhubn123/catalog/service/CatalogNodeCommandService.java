@@ -10,8 +10,6 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -21,24 +19,29 @@ import java.util.Objects;
  *
  * <p>包含新增、移动、更新、删除以及同级排序维护等写操作。</p>
  *
- * <p>默认假设目录节点的排序数据由当前服务持续维护为一致状态，
- * 因此写入热路径不再主动扫描整组兄弟节点做排序归一化。</p>
- *
- * <p>当前默认采用“跳跃排序”策略：追加节点时按固定步长分配排序值，
- * 调整位置时优先复用相邻节点之间的空隙，只有间隔耗尽时才对局部兄弟节点做一次重排。
- * 如需修复历史脏数据，应通过单独的治理入口处理，而不是让每次写操作都承担全量扫描成本。</p>
+ * <p>写路径默认依赖可插拔的 {@link CatalogSortStrategy} 计算 sort 值，
+ * 既保留当前 gap 排序的默认行为，也为后续扩展其他整数排序策略预留注入点。</p>
  */
 final class CatalogNodeCommandService {
 
     private static final Long ROOT_PARENT_ID = 0L;
-    private static final int SORT_STEP = 1024;
 
     private final CatalogNodeMapper nodeMapper;
     private final CatalogRelMapper relMapper;
+    private final CatalogSortStrategy sortStrategy;
 
     CatalogNodeCommandService(CatalogNodeMapper nodeMapper, CatalogRelMapper relMapper) {
+        this(nodeMapper, relMapper, new GapCatalogSortStrategy());
+    }
+
+    CatalogNodeCommandService(
+            CatalogNodeMapper nodeMapper,
+            CatalogRelMapper relMapper,
+            CatalogSortStrategy sortStrategy
+    ) {
         this.nodeMapper = nodeMapper;
         this.relMapper = relMapper;
+        this.sortStrategy = sortStrategy == null ? new GapCatalogSortStrategy() : sortStrategy;
     }
 
     Long addNode(Long parentId, String name) {
@@ -82,7 +85,8 @@ final class CatalogNodeCommandService {
             node.setParentId(normalizedParentId);
             node.setName(validNames.get(i));
             node.setLevel(parent == null ? 1 : parent.getLevel() + 1);
-            node.setSort(addSortStep(startSort, i));
+            int sort = i == 0 ? startSort : sortStrategy.nextAppendSort(nodes.get(i - 1).getSort());
+            node.setSort(sort);
             nodes.add(node);
         }
 
@@ -122,7 +126,7 @@ final class CatalogNodeCommandService {
         CatalogNode newParent = getParentNode(newParentId);
         validateMoveTarget(node, newParentId, newParent);
 
-        int oldSort = defaultSort(node.getSort());
+        int oldSort = sortStrategy.normalizeSort(node.getSort());
         int newSort = resolveTargetSort(node, newParentId, targetIndex);
 
         if (Objects.equals(oldParentId, newParentId)) {
@@ -145,7 +149,6 @@ final class CatalogNodeCommandService {
 
     void deleteNode(Long nodeId, boolean recursive) {
         CatalogNode node = getRequiredNode(nodeId);
-        Long parentId = normalizeParentId(node.getParentId());
 
         List<CatalogNode> subtree = nodeMapper.selectByPathPrefix(node.getPath());
         List<Long> nodeIds = subtree.stream()
@@ -185,7 +188,7 @@ final class CatalogNodeCommandService {
             return new CatalogSortRepairResult("ALL", null, 0, 0, 0);
         }
 
-        Map<Long, List<CatalogNode>> siblingsByParent = new LinkedHashMap<>();
+        Map<Long, List<CatalogNode>> siblingsByParent = new java.util.LinkedHashMap<>();
         for (CatalogNode node : nodes) {
             siblingsByParent.computeIfAbsent(normalizeParentId(node.getParentId()), key -> new ArrayList<>()).add(node);
         }
@@ -228,30 +231,31 @@ final class CatalogNodeCommandService {
 
     private int resolveTargetSort(CatalogNode node, Long parentId, Integer targetIndex) {
         Long currentParentId = normalizeParentId(node.getParentId());
-        int currentSort = defaultSort(node.getSort());
+        int currentSort = sortStrategy.normalizeSort(node.getSort());
 
         if (targetIndex == null) {
             Integer maxSortValue = nodeMapper.selectMaxSortByParent(parentId);
             if (maxSortValue == null) {
-                return SORT_STEP;
+                return sortStrategy.nextAppendSort(null);
             }
-            if (Objects.equals(parentId, currentParentId) && currentSort >= maxSortValue) {
+            int normalizedMaxSort = sortStrategy.normalizeSort(maxSortValue);
+            if (Objects.equals(parentId, currentParentId) && currentSort >= normalizedMaxSort) {
                 return currentSort;
             }
-            return addSortStep(maxSortValue, 1);
+            return sortStrategy.nextAppendSort(maxSortValue);
         }
 
         List<CatalogNode> siblings = new ArrayList<>(nodeMapper.selectByParentId(parentId));
         siblings.removeIf(sibling -> Objects.equals(sibling.getId(), node.getId()));
 
         int normalizedIndex = Math.max(0, Math.min(targetIndex, siblings.size()));
-        Integer resolvedSort = resolveSortBetweenSiblings(siblings, normalizedIndex);
+        Integer resolvedSort = sortStrategy.resolveTargetSort(siblings, normalizedIndex);
         if (resolvedSort != null) {
             return resolvedSort;
         }
 
         rebalanceSiblingSorts(siblings);
-        resolvedSort = resolveSortBetweenSiblings(siblings, normalizedIndex);
+        resolvedSort = sortStrategy.resolveTargetSort(siblings, normalizedIndex);
         if (resolvedSort != null) {
             return resolvedSort;
         }
@@ -259,66 +263,16 @@ final class CatalogNodeCommandService {
         throw CatalogException.invalidArgument("无法为目标位置分配排序值，请先修复当前父节点下的排序数据");
     }
 
-    private Integer resolveSortBetweenSiblings(List<CatalogNode> siblings, int targetIndex) {
-        Integer previousSort = targetIndex <= 0
-                ? null
-                : defaultSort(siblings.get(targetIndex - 1).getSort());
-        Integer nextSort = targetIndex >= siblings.size()
-                ? null
-                : defaultSort(siblings.get(targetIndex).getSort());
-
-        if (previousSort == null && nextSort == null) {
-            return SORT_STEP;
-        }
-        if (previousSort == null) {
-            int candidate = nextSort / 2;
-            return candidate > 0 ? candidate : null;
-        }
-        if (nextSort == null) {
-            return addSortStep(previousSort, 1);
-        }
-
-        int gap = nextSort - previousSort;
-        if (gap <= 1) {
-            return null;
-        }
-
-        int candidate = previousSort + gap / 2;
-        if (candidate == previousSort || candidate == nextSort) {
-            return null;
-        }
-        return candidate;
-    }
-
     private int rebalanceSiblingSorts(List<CatalogNode> siblings) {
-        if (siblings == null || siblings.isEmpty()) {
-            return 0;
+        Map<Long, Integer> updates = sortStrategy.rebalance(siblings);
+        for (Map.Entry<Long, Integer> entry : updates.entrySet()) {
+            nodeMapper.updateSort(entry.getKey(), entry.getValue());
         }
-
-        siblings.sort(Comparator
-                .comparingInt((CatalogNode sibling) -> defaultSort(sibling.getSort()))
-                .thenComparing(sibling -> sibling.getId() == null ? Long.MAX_VALUE : sibling.getId()));
-
-        int expectedSort = SORT_STEP;
-        int updatedNodes = 0;
-        for (CatalogNode sibling : siblings) {
-            if (sibling == null || sibling.getId() == null) {
-                expectedSort = addSortStep(expectedSort, 1);
-                continue;
-            }
-            if (!Objects.equals(sibling.getSort(), expectedSort)) {
-                nodeMapper.updateSort(sibling.getId(), expectedSort);
-                sibling.setSort(expectedSort);
-                updatedNodes++;
-            }
-            expectedSort = addSortStep(expectedSort, 1);
-        }
-        return updatedNodes;
+        return updates.size();
     }
 
     private int nextAppendSort(Long parentId) {
-        Integer maxSort = nodeMapper.selectMaxSortByParent(parentId);
-        return maxSort == null ? SORT_STEP : addSortStep(maxSort, 1);
+        return sortStrategy.nextAppendSort(nodeMapper.selectMaxSortByParent(parentId));
     }
 
     private int countBindings(List<Long> nodeIds) {
@@ -358,19 +312,7 @@ final class CatalogNodeCommandService {
         return value.trim();
     }
 
-    private int defaultSort(Integer sort) {
-        return sort == null || sort <= 0 ? SORT_STEP : sort;
-    }
-
     private int defaultLevel(Integer level) {
         return level == null || level <= 0 ? 1 : level;
-    }
-
-    private int addSortStep(int baseSort, int stepCount) {
-        try {
-            return Math.addExact(baseSort, Math.multiplyExact(SORT_STEP, stepCount));
-        } catch (ArithmeticException ex) {
-            throw CatalogException.invalidArgument("同级排序值已超过上限，请先执行排序修复");
-        }
     }
 }

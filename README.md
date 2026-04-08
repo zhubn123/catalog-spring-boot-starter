@@ -209,9 +209,13 @@ samples/catalog-demo/src/main/resources/static/catalog-demo/index.html
 catalog:
   enabled: true              # 是否启用
   enable-rest-api: true      # 是否启用REST API
+  sort:
+    strategy: gap            # 当前内置策略：gap
+    gap-step: 1024           # gap 排序步长，适合中小规模同级节点场景
 ```
 
 > 当前公开配置仅保留已落地生效的选项；`table-prefix`、`init-schema` 等历史占位配置已移除。
+> 如需扩展排序逻辑，可自行注册 `CatalogSortStrategy` Bean 覆盖默认的 gap 排序实现。
 
 ## 🏗️ 项目结构
 
@@ -242,6 +246,7 @@ catalog-spring-boot-starter/
 - 调整位置时会优先复用相邻节点之间的空隙，只有空隙耗尽时才对局部兄弟节点做重排
 - 调用方应只依赖“按 `sort` 升序即可得到正确顺序”，不要依赖 `sort` 连续或从 `1` 开始
 - 如需修复历史脏数据或手工改库后的排序间隔，可显式调用 `/catalog/admin/repairSort` 或 `/catalog/admin/repairSort/all`
+- 当前默认策略是 `gap`，可通过 `catalog.sort.gap-step` 调整步长；如需特殊排序规则，可通过 Spring Bean 扩展自定义整数型排序策略
 
 ### 路径冗余设计
 

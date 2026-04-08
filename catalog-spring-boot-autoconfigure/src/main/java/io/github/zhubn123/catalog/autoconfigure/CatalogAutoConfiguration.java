@@ -4,24 +4,21 @@ import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
 import io.github.zhubn123.catalog.service.CatalogService;
 import io.github.zhubn123.catalog.service.CatalogServiceImpl;
+import io.github.zhubn123.catalog.service.CatalogSortStrategy;
 import io.github.zhubn123.catalog.service.CatalogTreeNodeEnricher;
+import io.github.zhubn123.catalog.service.GapCatalogSortStrategy;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
 /**
  * 目录模块自动配置。
- *
- * <p>在满足条件时自动注册目录服务、REST 控制器以及统一异常处理器，
- * 并开启 MyBatis Mapper 扫描。</p>
- *
- * @author zhubn
- * @date 2026/4/2
  */
 @Configuration
 @EnableConfigurationProperties(CatalogProperties.class)
@@ -31,12 +28,26 @@ public class CatalogAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    public CatalogSortStrategy catalogSortStrategy(CatalogProperties properties) {
+        CatalogProperties.SortProperties sort = properties.getSort() == null
+                ? new CatalogProperties.SortProperties()
+                : properties.getSort();
+        String strategy = sort.getStrategy();
+        if (!StringUtils.hasText(strategy) || GapCatalogSortStrategy.NAME.equalsIgnoreCase(strategy.trim())) {
+            return new GapCatalogSortStrategy(sort.getGapStep());
+        }
+        throw new IllegalArgumentException("Unsupported catalog.sort.strategy: " + strategy);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public CatalogService catalogService(
             CatalogNodeMapper nodeMapper,
             CatalogRelMapper relMapper,
-            List<CatalogTreeNodeEnricher> treeNodeEnrichers
+            List<CatalogTreeNodeEnricher> treeNodeEnrichers,
+            CatalogSortStrategy sortStrategy
     ) {
-        return new CatalogServiceImpl(nodeMapper, relMapper, treeNodeEnrichers);
+        return new CatalogServiceImpl(nodeMapper, relMapper, treeNodeEnrichers, sortStrategy);
     }
 
     @Bean

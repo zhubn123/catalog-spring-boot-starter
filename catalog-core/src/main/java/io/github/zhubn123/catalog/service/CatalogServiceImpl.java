@@ -1,7 +1,7 @@
 package io.github.zhubn123.catalog.service;
 
-import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogSortRepairResult;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
@@ -14,12 +14,6 @@ import java.util.List;
 
 /**
  * 目录服务门面实现。
- *
- * <p>对外仍然只暴露一个 {@link CatalogService}，内部将节点命令、业务绑定与查询逻辑
- * 分别委托给更聚焦的协作类，降低单类复杂度。</p>
- *
- * @author zhubn
- * @date 2026/4/2
  */
 @Service
 public class CatalogServiceImpl implements CatalogService {
@@ -29,7 +23,7 @@ public class CatalogServiceImpl implements CatalogService {
     private final CatalogQueryService queryService;
 
     public CatalogServiceImpl(CatalogNodeMapper nodeMapper, CatalogRelMapper relMapper) {
-        this(nodeMapper, relMapper, List.of());
+        this(nodeMapper, relMapper, List.of(), new GapCatalogSortStrategy());
     }
 
     public CatalogServiceImpl(
@@ -37,7 +31,16 @@ public class CatalogServiceImpl implements CatalogService {
             CatalogRelMapper relMapper,
             List<CatalogTreeNodeEnricher> treeNodeEnrichers
     ) {
-        this.nodeCommandService = new CatalogNodeCommandService(nodeMapper, relMapper);
+        this(nodeMapper, relMapper, treeNodeEnrichers, new GapCatalogSortStrategy());
+    }
+
+    public CatalogServiceImpl(
+            CatalogNodeMapper nodeMapper,
+            CatalogRelMapper relMapper,
+            List<CatalogTreeNodeEnricher> treeNodeEnrichers,
+            CatalogSortStrategy sortStrategy
+    ) {
+        this.nodeCommandService = new CatalogNodeCommandService(nodeMapper, relMapper, sortStrategy);
         this.bindingService = new CatalogBindingService(relMapper);
         this.queryService = new CatalogQueryService(nodeMapper, relMapper, new CatalogTreeAssembler(treeNodeEnrichers));
     }

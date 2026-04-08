@@ -107,6 +107,28 @@ class CatalogServiceImplTest {
     }
 
     @Test
+    void addNodeUsesInjectedSortStrategyStep() {
+        CatalogService customService = new CatalogServiceImpl(
+                nodeMapper,
+                relMapper,
+                List.of(),
+                new GapCatalogSortStrategy(128)
+        );
+        when(nodeMapper.selectMaxSortByParent(0L)).thenReturn(null);
+        doAnswer(invocation -> {
+            CatalogNode node = invocation.getArgument(0);
+            node.setId(200L);
+            return null;
+        }).when(nodeMapper).insert(any(CatalogNode.class));
+
+        customService.addNode(null, "Root");
+
+        ArgumentCaptor<CatalogNode> nodeCaptor = ArgumentCaptor.forClass(CatalogNode.class);
+        verify(nodeMapper).insert(nodeCaptor.capture());
+        assertThat(nodeCaptor.getValue().getSort()).isEqualTo(128);
+    }
+
+    @Test
     void bindInsertsRelationForNode() {
         when(relMapper.selectByBiz("biz-1", "deliver")).thenReturn(Collections.emptyList());
 
