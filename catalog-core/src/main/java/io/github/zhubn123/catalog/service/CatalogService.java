@@ -62,6 +62,14 @@ public interface CatalogService {
     List<CatalogNode> listNodesInTreeOrder();
 
     /**
+     * 返回指定父节点的直接子节点列表。
+     *
+     * <p>该接口不递归展开整棵树，更适合生产场景按层级懒加载；
+     * 当 {@code parentId} 为空、为 {@code 0} 或小于 {@code 0} 时，表示查询根节点列表。</p>
+     */
+    List<CatalogNode> listChildrenNodes(Long parentId);
+
+    /**
      * 返回完整目录的嵌套树结构。
      *
      * <p>与 {@link #listNodesInTreeOrder()} 不同，该方法会在后端完成父子关系组装，

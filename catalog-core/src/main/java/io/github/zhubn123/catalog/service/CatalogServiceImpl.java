@@ -103,6 +103,11 @@ public class CatalogServiceImpl implements CatalogService {
     }
 
     @Override
+    public List<CatalogNode> listChildrenNodes(Long parentId) {
+        return queryService.listChildrenNodes(parentId);
+    }
+
+    @Override
     public List<CatalogTreeNode> listNodeTree() {
         return queryService.listNodeTree();
     }

@@ -1,5 +1,6 @@
 package io.github.zhubn123.catalog.autoconfigure;
 
+import io.github.zhubn123.catalog.domain.CatalogNode;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.service.CatalogService;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,6 +69,18 @@ class CatalogControllerTest {
         controller.nodes();
 
         verify(catalogService).listNodesInTreeOrder();
+    }
+
+    @Test
+    void childrenUsesDirectChildrenEndpoint() {
+        CatalogNode child = new CatalogNode();
+        child.setId(2L);
+        when(catalogService.listChildrenNodes(0L)).thenReturn(List.of(child));
+
+        List<CatalogNode> children = controller.children(0L);
+
+        verify(catalogService).listChildrenNodes(0L);
+        assertThat(children).extracting(CatalogNode::getId).containsExactly(2L);
     }
 
     @Test

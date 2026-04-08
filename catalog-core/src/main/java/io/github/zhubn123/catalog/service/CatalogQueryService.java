@@ -46,6 +46,10 @@ final class CatalogQueryService {
         return sortNodesForTreeTraversal(nodeMapper.selectAll());
     }
 
+    List<CatalogNode> listChildrenNodes(Long parentId) {
+        return nodeMapper.selectByParentId(normalizeParentId(parentId));
+    }
+
     List<CatalogTreeNode> listNodeTree() {
         return treeAssembler.assemble(listNodesInTreeOrder(), CatalogTreeAssembleContext.fullTree());
     }

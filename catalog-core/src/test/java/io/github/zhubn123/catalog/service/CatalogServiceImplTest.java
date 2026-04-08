@@ -253,6 +253,19 @@ class CatalogServiceImplTest {
     }
 
     @Test
+    void listChildrenNodesReturnsDirectChildrenForRootLazyLoading() {
+        when(nodeMapper.selectByParentId(0L)).thenReturn(List.of(
+                node(1L, 0L, "Root-A", "/1", 1, 1024),
+                node(2L, 0L, "Root-B", "/2", 1, 2048)
+        ));
+
+        List<CatalogNode> children = service.listChildrenNodes(null);
+
+        verify(nodeMapper).selectByParentId(0L);
+        assertThat(children).extracting(CatalogNode::getId).containsExactly(1L, 2L);
+    }
+
+    @Test
     void listNodeTreeReturnsNestedTreeStructure() {
         when(nodeMapper.selectAll()).thenReturn(List.of(
                 node(1L, 0L, "Root", "/1", 1, 1),

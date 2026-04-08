@@ -192,6 +192,17 @@ public class CatalogController {
     }
 
     /**
+     * 返回指定父节点的直接子节点列表。
+     *
+     * <p>该接口不递归展开整棵树，更适合按层级懒加载；当 {@code parentId} 为空、
+     * 为 {@code 0} 或小于 {@code 0} 时，表示查询根节点列表。</p>
+     */
+    @GetMapping("/children")
+    public List<CatalogNode> children(Long parentId) {
+        return catalogService.listChildrenNodes(parentId);
+    }
+
+    /**
      * 返回完整目录的嵌套树结构。
      *
      * <p>该接口会在后端完成 children 组装，适合树形组件直接消费。</p>
