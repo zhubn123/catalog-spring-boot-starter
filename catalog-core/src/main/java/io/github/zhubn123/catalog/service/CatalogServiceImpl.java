@@ -38,7 +38,7 @@ public class CatalogServiceImpl implements CatalogService {
             List<CatalogTreeNodeEnricher> treeNodeEnrichers
     ) {
         this.nodeCommandService = new CatalogNodeCommandService(nodeMapper, relMapper);
-        this.bindingService = new CatalogBindingService(nodeMapper, relMapper);
+        this.bindingService = new CatalogBindingService(relMapper);
         this.queryService = new CatalogQueryService(nodeMapper, relMapper, new CatalogTreeAssembler(treeNodeEnrichers));
     }
 

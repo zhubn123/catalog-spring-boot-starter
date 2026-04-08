@@ -9,7 +9,7 @@ import java.util.List;
  * 目录树节点增强策略。
  *
  * <p>默认树接口会返回标准节点字段、{@code children}、{@code leaf} 与 {@code bindable}。
- * 如果业务方希望进一步在树节点上补充摘要、统计或挂载信息，可以实现该接口，
+ * 如果业务方希望进一步在树节点上补充摘要、统计或业务挂载信息，可以实现该接口，
  * 把附加内容写入 {@link CatalogTreeNode#getExtensions()}。</p>
  *
  * <p>为了兼顾简单场景和批量优化场景，接口同时提供两种扩展方式：</p>

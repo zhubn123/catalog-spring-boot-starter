@@ -29,7 +29,7 @@ class CatalogTreeAssemblerTest {
 
         assertThat(tree).singleElement().satisfies(root -> {
             assertThat(root.getLeaf()).isFalse();
-            assertThat(root.getBindable()).isFalse();
+            assertThat(root.getBindable()).isTrue();
             assertThat(root.getExtensions()).containsEntry("scene", "BIZ_TREE");
             assertThat(root.getChildren()).singleElement().satisfies(leaf -> {
                 assertThat(leaf.getLeaf()).isTrue();

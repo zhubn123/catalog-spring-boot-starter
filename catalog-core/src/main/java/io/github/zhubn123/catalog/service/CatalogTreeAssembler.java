@@ -77,7 +77,7 @@ public final class CatalogTreeAssembler {
         for (CatalogTreeNode treeNode : treeNodeById.values()) {
             boolean leaf = treeNode.getChildren() == null || treeNode.getChildren().isEmpty();
             treeNode.setLeaf(leaf);
-            treeNode.setBindable(leaf);
+            treeNode.setBindable(true);
         }
     }
 

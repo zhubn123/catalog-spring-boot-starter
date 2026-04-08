@@ -26,7 +26,7 @@ export function createBindingActions(context) {
             return false;
         }
         if (!selectedNode.value.bindable) {
-            ElMessage.warning("当前节点不是可绑定业务对象的叶子节点");
+            ElMessage.warning("当前节点当前不可绑定业务对象");
             return false;
         }
         return true;

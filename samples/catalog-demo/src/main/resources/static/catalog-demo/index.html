@@ -17,7 +17,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <h2>Catalog 目录树 Demo</h2>
-        <p>左侧展示后端返回的嵌套树，右侧集中演示节点维护、叶子节点多业务绑定、增量查询、排序治理和业务示例。</p>
+        <p>左侧展示后端返回的嵌套树，右侧集中演示节点维护、节点业务绑定、增量查询、排序治理和业务示例。</p>
       </div>
 
       <div class="toolbar toolbar-lite">
@@ -133,8 +133,8 @@
               </section>
 
               <section class="panel panel-span-2">
-                <div class="panel-title">叶子节点业务绑定</div>
-                <p class="muted-tip">当前语义是：同一个业务对象只能绑定一个目录节点，但同一个叶子节点可以绑定多个业务对象。</p>
+                <div class="panel-title">节点业务绑定</div>
+                <p class="muted-tip">当前语义是：同一个业务对象只能绑定一个目录节点，但同一个目录节点可以绑定多个业务对象。</p>
                 <div class="form-row">
                   <el-select v-model="bindForm.bizType" class="w-160" placeholder="业务类型">
                     <el-option label="deliver" value="deliver"></el-option>
@@ -146,7 +146,7 @@
                   <el-button type="primary" @click="bindBiz" :disabled="!selectedNode">绑定到当前节点</el-button>
                 </div>
                 <div class="form-row align-start">
-                  <el-input v-model="bindManyForm.bizIdsText" class="w-flex" type="textarea" :rows="3" placeholder="多个业务 ID，支持逗号或换行分隔，会逐个追加到当前叶子节点。" :disabled="!selectedNode || !selectedNode.bindable"></el-input>
+                  <el-input v-model="bindManyForm.bizIdsText" class="w-flex" type="textarea" :rows="3" placeholder="多个业务 ID，支持逗号或换行分隔，会逐个追加到当前节点。" :disabled="!selectedNode || !selectedNode.bindable"></el-input>
                 </div>
                 <div class="form-row justify-end">
                   <el-button type="primary" plain @click="bindManyBizToCurrentNode" :disabled="!selectedNode">批量追加绑定</el-button>

@@ -5,7 +5,7 @@
 ## ✨ 特性
 
 - 🌳 **树形结构管理** - 支持无限层级的目录树
-- 🔗 **业务对象绑定** - 叶子节点可选绑定业务对象，单个业务对象只绑定一个目录节点
+- 🔗 **业务对象绑定** - 目录节点可选绑定业务对象，单个业务对象只绑定一个目录节点
 - 🎯 **拖拽排序** - 支持节点移动和排序
 - 🚀 **高性能查询** - 路径冗余设计，避免递归查询
 - 🔧 **开箱即用** - Spring Boot Starter 一键集成
@@ -51,8 +51,8 @@ CREATE TABLE catalog_rel (
 
 > 说明：
 > - 目录节点可以只作为容器，不必绑定业务对象
-> - 只有叶子节点允许绑定业务对象
-> - 单个叶子节点可以绑定多个业务对象
+> - 目录节点可按业务需要绑定业务对象
+> - 单个目录节点可以绑定多个业务对象
 > - 同一 `biz_type + biz_id` 最多绑定一个目录节点
 ### 3. 配置 sample 本地环境
 
@@ -104,7 +104,7 @@ Long contractId = catalogService.addNode(projectId, "合同A");
 Long deliveryId = catalogService.addNode(contractId, "交付物A");
 
 // 目录节点可以只做容器，不必绑定业务对象
-// 叶子节点可选绑定业务对象；单个叶子节点也可以聚合同类型的多个业务对象
+// 目录节点可按业务需要绑定业务对象；单个目录节点也可以聚合同类型的多个业务对象
 catalogService.bind(deliveryId, "DELIVER-001", "deliver");
 
 // 查询业务路径（单个业务对象最多绑定一个目录节点）
@@ -125,7 +125,7 @@ samples/catalog-demo/src/main/resources/static/catalog-demo/index.html
 ### 展示顺序
 
 1. 目录树浏览与拖拽移动
-2. 叶子节点业务绑定与解绑
+2. 目录节点业务绑定与解绑
 3. 业务路径、局部树、子树查询
 4. sample 前端 API 日志与后端请求/SQL 日志
 
@@ -195,12 +195,12 @@ samples/catalog-demo/src/main/resources/static/catalog-demo/index.html
 > `childrenPage` 在 `children` 的基础上补充分页元数据，适合根节点较多或热点父节点场景。
 > `nodes`、`bizTreeNodes`、`subtreeNodes` 返回的都是按树遍历顺序排列的扁平节点列表。
 > `tree`、`bizTree`、`subtree` 会在后端完成 `children` 组装，直接返回嵌套树结构。
-> 树形节点额外包含 `leaf`、`bindable` 与 `extensions` 字段，便于后续继续扩展叶子节点业务装配策略。
+> 树形节点额外包含 `leaf`、`bindable` 与 `extensions` 字段，便于后续继续扩展节点业务装配策略。
 
 ### 树节点扩展策略
 
-- 默认情况下，后端会把叶子节点标记为 `leaf=true`、`bindable=true`。
-- 如果你希望在树节点上补充业务摘要、绑定统计或叶子节点挂载信息，可以实现 `CatalogTreeNodeEnricher` Bean。
+- 默认情况下，后端会根据是否存在子节点标记 `leaf`，并默认把目录节点标记为 `bindable=true`。
+- 如果你希望在树节点上补充业务摘要、绑定统计或节点挂载信息，可以实现 `CatalogTreeNodeEnricher` Bean。
 - 自定义策略会在树组装完成后执行，推荐把附加信息写入 `extensions`，避免频繁变更基础返回结构。
 
 ## 🔧 配置项
@@ -231,8 +231,8 @@ catalog-spring-boot-starter/
 ### 业务绑定约束
 
 - 目录节点可以只作为容器，不必绑定业务对象
-- 只有叶子节点（无子节点）才能绑定业务对象
-- 单个叶子节点可以绑定多个业务对象
+- 目录节点可按业务需要绑定业务对象
+- 单个目录节点可以绑定多个业务对象
 - 同一 `bizType + bizId` 最多绑定一个目录节点
 - 批量绑定推荐使用“多组一对一绑定”；不要让一个业务对象绑定多个节点
 

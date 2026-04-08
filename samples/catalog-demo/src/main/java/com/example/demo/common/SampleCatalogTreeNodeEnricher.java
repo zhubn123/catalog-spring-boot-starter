@@ -17,10 +17,10 @@ import java.util.stream.Collectors;
 /**
  * sample 项目的树节点扩展示例。
  *
- * <p>这里把叶子节点的直接业务绑定摘要写入 {@code extensions.bindingSummary}，
+ * <p>这里把节点的直接业务绑定摘要写入 {@code extensions.bindingSummary}，
  * 让前端示例能直观看到扩展点的用法。</p>
  *
- * <p>为了避免 sample 在整棵树里对每个叶子节点都单独查一次数据库，
+ * <p>为了避免 sample 在整棵树里对每个已绑定节点都单独查一次数据库，
  * 这里使用 {@link CatalogTreeNodeEnricher#prepare(List, CatalogTreeAssembleContext)}
  * 先把当前树涉及的节点绑定关系一次性取回，再在逐节点增强阶段消费。</p>
  */
@@ -71,7 +71,7 @@ public class SampleCatalogTreeNodeEnricher implements CatalogTreeNodeEnricher {
     }
 
     private void applyBindingSummary(CatalogTreeNode treeNode, List<CatalogRel> bindings, CatalogTreeAssembleContext context) {
-        if (treeNode == null || !Boolean.TRUE.equals(treeNode.getLeaf())) {
+        if (treeNode == null) {
             return;
         }
 

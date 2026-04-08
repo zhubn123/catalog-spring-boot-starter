@@ -107,8 +107,7 @@ class CatalogServiceImplTest {
     }
 
     @Test
-    void bindInsertsRelationForLeafNode() {
-        when(nodeMapper.countChildren(10L)).thenReturn(0);
+    void bindInsertsRelationForNode() {
         when(relMapper.selectByBiz("biz-1", "deliver")).thenReturn(Collections.emptyList());
 
         service.bind(10L, " biz-1 ", " deliver ");
@@ -123,7 +122,6 @@ class CatalogServiceImplTest {
 
     @Test
     void bindIsIdempotentWhenBizIsAlreadyBoundToSameNode() {
-        when(nodeMapper.countChildren(10L)).thenReturn(0);
         when(relMapper.selectByBiz("biz-1", "deliver"))
                 .thenReturn(List.of(rel(10L, "biz-1", "deliver")));
 
@@ -134,7 +132,6 @@ class CatalogServiceImplTest {
 
     @Test
     void bindRejectsBindingToAnotherNode() {
-        when(nodeMapper.countChildren(10L)).thenReturn(0);
         when(relMapper.selectByBiz("biz-1", "deliver"))
                 .thenReturn(List.of(rel(20L, "biz-1", "deliver")));
 
@@ -147,15 +144,12 @@ class CatalogServiceImplTest {
     }
 
     @Test
-    void bindRejectsNonLeafNode() {
-        when(nodeMapper.countChildren(10L)).thenReturn(1);
+    void bindAllowsNonLeafNode() {
+        when(relMapper.selectByBiz("biz-1", "deliver")).thenReturn(Collections.emptyList());
 
-        assertThatThrownBy(() -> service.bind(10L, "biz-1", "deliver"))
-                .isInstanceOf(CatalogException.class)
-                .extracting("errorCode")
-                .isEqualTo("NOT_LEAF_NODE");
+        service.bind(10L, "biz-1", "deliver");
 
-        verify(relMapper, never()).selectByBiz(anyString(), anyString());
+        verify(relMapper).insert(any(CatalogRel.class));
     }
 
     @Test
@@ -180,7 +174,6 @@ class CatalogServiceImplTest {
 
     @Test
     void batchBindByBizIdsInsertsOnlyNewPairwiseBindings() {
-        when(nodeMapper.selectIdsHavingChildren(List.of(10L, 20L))).thenReturn(Collections.emptyList());
         when(relMapper.selectByBizIds(List.of("biz-1", "biz-2"), "deliver"))
                 .thenReturn(List.of(rel(10L, "biz-1", "deliver")));
 
@@ -199,7 +192,6 @@ class CatalogServiceImplTest {
 
     @Test
     void batchBindByBizIdsRejectsConflictingRequestBindings() {
-        when(nodeMapper.selectIdsHavingChildren(List.of(10L, 20L))).thenReturn(Collections.emptyList());
 
         assertThatThrownBy(() -> service.batchBindByBizIds(
                 List.of(10L, 20L),
@@ -366,7 +358,7 @@ class CatalogServiceImplTest {
 
     @Test
     void moveNodeToRootAppendsAfterRootMaxSortWithoutScanningRootSiblings() {
-        CatalogNode movingNode = node(23L, 21L, "测试", "/21/23", 2, 2);
+        CatalogNode movingNode = node(23L, 21L, "Test", "/21/23", 2, 2);
         when(nodeMapper.selectById(23L)).thenReturn(movingNode);
         when(nodeMapper.selectMaxSortByParent(0L)).thenReturn(16);
 
@@ -549,3 +541,4 @@ class CatalogServiceImplTest {
         return rel;
     }
 }
+

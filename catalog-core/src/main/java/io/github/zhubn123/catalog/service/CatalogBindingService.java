@@ -2,7 +2,6 @@ package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogRel;
 import io.github.zhubn123.catalog.exception.CatalogException;
-import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
 import org.springframework.util.StringUtils;
 
@@ -19,17 +18,14 @@ import java.util.stream.Collectors;
  */
 final class CatalogBindingService {
 
-    private final CatalogNodeMapper nodeMapper;
     private final CatalogRelMapper relMapper;
 
-    CatalogBindingService(CatalogNodeMapper nodeMapper, CatalogRelMapper relMapper) {
-        this.nodeMapper = nodeMapper;
+    CatalogBindingService(CatalogRelMapper relMapper) {
         this.relMapper = relMapper;
     }
 
     void bind(Long nodeId, String bizId, String bizType) {
         validateBindArgs(nodeId, bizId, bizType);
-        ensureLeafNode(nodeId);
 
         String normalizedBizId = trimToNull(bizId);
         String normalizedBizType = trimToNull(bizType);
@@ -77,8 +73,6 @@ final class CatalogBindingService {
         if (nodeIds.isEmpty()) {
             return;
         }
-
-        ensureLeafNodes(nodeIds);
 
         String normalizedBizType = trimToNull(bizType);
         if (normalizedBizType == null) {
@@ -166,29 +160,6 @@ final class CatalogBindingService {
         }
         if (!StringUtils.hasText(bizType)) {
             throw CatalogException.invalidArgument("bizType不能为空");
-        }
-    }
-
-    private void ensureLeafNode(Long nodeId) {
-        Integer childCount = nodeMapper.countChildren(nodeId);
-        if (childCount != null && childCount > 0) {
-            throw CatalogException.notLeafNode(nodeId);
-        }
-    }
-
-    private void ensureLeafNodes(List<Long> nodeIds) {
-        List<Long> validIds = nodeIds.stream()
-                .filter(Objects::nonNull)
-                .filter(id -> id > 0)
-                .distinct()
-                .toList();
-        if (validIds.isEmpty()) {
-            throw CatalogException.invalidArgument("节点ID列表为空");
-        }
-
-        List<Long> nonLeafIds = nodeMapper.selectIdsHavingChildren(validIds);
-        if (nonLeafIds != null && !nonLeafIds.isEmpty()) {
-            throw CatalogException.notLeafNode(nonLeafIds.get(0));
         }
     }
 
