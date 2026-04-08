@@ -6,6 +6,11 @@ import io.github.zhubn123.catalog.domain.CatalogSortRepairResult;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
+import io.github.zhubn123.catalog.service.binding.CatalogBindingService;
+import io.github.zhubn123.catalog.service.command.CatalogNodeCommandService;
+import io.github.zhubn123.catalog.service.query.CatalogQueryService;
+import io.github.zhubn123.catalog.service.sort.GapCatalogSortStrategy;
+import io.github.zhubn123.catalog.service.tree.CatalogTreeAssembler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

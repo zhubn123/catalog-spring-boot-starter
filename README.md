@@ -136,7 +136,7 @@ samples/catalog-demo/src/main/resources/static/catalog-demo/index.html
 
 2. 查询与绑定
    ![查询与绑定](docs/demo/02-binding-and-query.png)
-   展示内容：叶子节点绑定、路径查询、局部树查询结果
+   展示内容：目录节点绑定、路径查询、局部树查询结果
 
 3. 业务示例
    ![业务示例](docs/demo/03-business-example.png)

@@ -1,6 +1,7 @@
 package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.service.sort.ContiguousCatalogSortStrategy;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

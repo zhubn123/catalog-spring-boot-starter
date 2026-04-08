@@ -8,6 +8,8 @@ import io.github.zhubn123.catalog.domain.CatalogRel;
 import io.github.zhubn123.catalog.exception.CatalogException;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
+import io.github.zhubn123.catalog.service.sort.GapCatalogSortStrategy;
+import io.github.zhubn123.catalog.service.sort.ContiguousCatalogSortStrategy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;

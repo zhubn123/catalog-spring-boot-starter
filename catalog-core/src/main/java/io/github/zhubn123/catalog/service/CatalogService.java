@@ -43,7 +43,7 @@ public interface CatalogService {
     CatalogSortRepairResult repairAllSiblingSorts();
 
     /**
-     * 将业务对象绑定到单个叶子节点。
+     * 将业务对象绑定到单个目录节点。
      *
      * <p>目录节点可以只作为容器，不要求一定绑定业务对象；但同一个
      * {@code bizType + bizId} 最多只能绑定一个目录节点。</p>
@@ -62,7 +62,7 @@ public interface CatalogService {
     /**
      * 按顺序批量执行“一对一”业务绑定。
      *
-     * <p>{@code nodeIds} 与 {@code bizIds} 需要一一对应，适用于批量创建叶子节点后，
+     * <p>{@code nodeIds} 与 {@code bizIds} 需要一一对应，适用于批量创建目录节点后，
      * 再将多个业务对象分别绑定到各自节点的场景。</p>
      */
     void batchBindByBizIds(List<Long> nodeIds, List<String> bizIds, String bizType);

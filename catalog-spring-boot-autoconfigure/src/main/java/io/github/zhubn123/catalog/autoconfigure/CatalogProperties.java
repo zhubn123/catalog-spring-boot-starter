@@ -1,6 +1,6 @@
 package io.github.zhubn123.catalog.autoconfigure;
 
-import io.github.zhubn123.catalog.service.GapCatalogSortStrategy;
+import io.github.zhubn123.catalog.service.sort.GapCatalogSortStrategy;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

@@ -2,6 +2,7 @@ package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
+import io.github.zhubn123.catalog.service.tree.CatalogTreeAssembler;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
