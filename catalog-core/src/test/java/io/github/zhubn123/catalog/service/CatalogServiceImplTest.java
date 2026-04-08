@@ -1,5 +1,6 @@
 package io.github.zhubn123.catalog.service;
 
+import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.domain.CatalogRel;
@@ -263,6 +264,35 @@ class CatalogServiceImplTest {
 
         verify(nodeMapper).selectByParentId(0L);
         assertThat(children).extracting(CatalogNode::getId).containsExactly(1L, 2L);
+    }
+
+    @Test
+    void pageChildrenNodesReturnsPagedDirectChildrenForRoot() {
+        when(nodeMapper.countByParentId(0L)).thenReturn(21L);
+        when(nodeMapper.selectByParentIdPage(0L, 20L, 20)).thenReturn(List.of(
+                node(21L, 0L, "Root-21", "/21", 1, 21_504)
+        ));
+
+        CatalogPage<CatalogNode> page = service.pageChildrenNodes(null, 2, 20);
+
+        verify(nodeMapper).countByParentId(0L);
+        verify(nodeMapper).selectByParentIdPage(0L, 20L, 20);
+        assertThat(page.getPage()).isEqualTo(2);
+        assertThat(page.getSize()).isEqualTo(20);
+        assertThat(page.getTotal()).isEqualTo(21L);
+        assertThat(page.isHasNext()).isFalse();
+        assertThat(page.getItems()).extracting(CatalogNode::getId).containsExactly(21L);
+    }
+
+    @Test
+    void pageChildrenNodesRejectsOversizedPageSize() {
+        assertThatThrownBy(() -> service.pageChildrenNodes(0L, 1, 201))
+                .isInstanceOf(CatalogException.class)
+                .extracting("errorCode")
+                .isEqualTo("INVALID_ARGUMENT");
+
+        verify(nodeMapper, never()).countByParentId(anyLong());
+        verify(nodeMapper, never()).selectByParentIdPage(anyLong(), anyLong(), anyInt());
     }
 
     @Test

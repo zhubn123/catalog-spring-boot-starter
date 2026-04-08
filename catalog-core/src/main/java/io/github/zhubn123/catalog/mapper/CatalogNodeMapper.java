@@ -2,6 +2,7 @@ package io.github.zhubn123.catalog.mapper;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -26,9 +27,13 @@ public interface CatalogNodeMapper {
 
     List<CatalogNode> selectByParentId(Long parentId);
 
+    List<CatalogNode> selectByParentIdPage(@Param("parentId") Long parentId, @Param("offset") long offset, @Param("size") int size);
+
     List<CatalogNode> selectByPathPrefix(String path);
 
     Integer selectMaxSortByParent(Long parentId);
+
+    long countByParentId(Long parentId);
 
     Integer countChildren(Long nodeId);
 

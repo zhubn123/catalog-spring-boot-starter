@@ -1,5 +1,6 @@
 package io.github.zhubn123.catalog.autoconfigure;
 
+import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.service.CatalogService;
@@ -81,6 +82,20 @@ class CatalogControllerTest {
 
         verify(catalogService).listChildrenNodes(0L);
         assertThat(children).extracting(CatalogNode::getId).containsExactly(2L);
+    }
+
+    @Test
+    void childrenPageUsesPagedChildrenEndpoint() {
+        CatalogNode child = new CatalogNode();
+        child.setId(3L);
+        when(catalogService.pageChildrenNodes(0L, 2, 20))
+                .thenReturn(new CatalogPage<>(2, 20, 21, false, List.of(child)));
+
+        CatalogPage<CatalogNode> page = controller.childrenPage(0L, 2, 20);
+
+        verify(catalogService).pageChildrenNodes(0L, 2, 20);
+        assertThat(page.getPage()).isEqualTo(2);
+        assertThat(page.getItems()).extracting(CatalogNode::getId).containsExactly(3L);
     }
 
     @Test

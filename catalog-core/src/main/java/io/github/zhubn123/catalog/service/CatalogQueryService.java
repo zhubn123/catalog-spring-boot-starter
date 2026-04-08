@@ -1,8 +1,10 @@
 package io.github.zhubn123.catalog.service;
 
+import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import io.github.zhubn123.catalog.domain.CatalogRel;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
+import io.github.zhubn123.catalog.exception.CatalogException;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
 import org.springframework.util.StringUtils;
@@ -27,6 +29,9 @@ import java.util.stream.Collectors;
 final class CatalogQueryService {
 
     private static final Long ROOT_PARENT_ID = 0L;
+    private static final int DEFAULT_PAGE = 1;
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 200;
 
     private final CatalogNodeMapper nodeMapper;
     private final CatalogRelMapper relMapper;
@@ -48,6 +53,21 @@ final class CatalogQueryService {
 
     List<CatalogNode> listChildrenNodes(Long parentId) {
         return nodeMapper.selectByParentId(normalizeParentId(parentId));
+    }
+
+    CatalogPage<CatalogNode> pageChildrenNodes(Long parentId, Integer page, Integer size) {
+        int effectivePage = normalizePage(page);
+        int effectiveSize = normalizePageSize(size);
+        Long effectiveParentId = normalizeParentId(parentId);
+        long total = nodeMapper.countByParentId(effectiveParentId);
+        if (total == 0) {
+            return new CatalogPage<>(effectivePage, effectiveSize, 0, false, Collections.emptyList());
+        }
+
+        long offset = (long) (effectivePage - 1) * effectiveSize;
+        List<CatalogNode> items = nodeMapper.selectByParentIdPage(effectiveParentId, offset, effectiveSize);
+        boolean hasNext = offset + items.size() < total;
+        return new CatalogPage<>(effectivePage, effectiveSize, total, hasNext, items);
     }
 
     List<CatalogTreeNode> listNodeTree() {
@@ -230,5 +250,28 @@ final class CatalogQueryService {
 
     private int defaultSort(Integer sort) {
         return sort == null || sort <= 0 ? 1 : sort;
+    }
+
+    private int normalizePage(Integer page) {
+        if (page == null) {
+            return DEFAULT_PAGE;
+        }
+        if (page <= 0) {
+            throw CatalogException.invalidArgument("page 必须大于 0");
+        }
+        return page;
+    }
+
+    private int normalizePageSize(Integer size) {
+        if (size == null) {
+            return DEFAULT_PAGE_SIZE;
+        }
+        if (size <= 0) {
+            throw CatalogException.invalidArgument("size 必须大于 0");
+        }
+        if (size > MAX_PAGE_SIZE) {
+            throw CatalogException.invalidArgument("size 不能大于 " + MAX_PAGE_SIZE);
+        }
+        return size;
     }
 }

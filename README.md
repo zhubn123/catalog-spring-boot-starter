@@ -182,6 +182,7 @@ samples/catalog-demo/src/main/resources/static/catalog-demo/index.html
 | API | 方法 | 说明 |
 |-----|------|------|
 | `/catalog/children` | GET | 按父节点查询直接子节点列表，适合懒加载 |
+| `/catalog/childrenPage` | GET | 按父节点分页查询直接子节点，适合大兄弟集合 |
 | `/catalog/nodes` | GET | 获取完整目录的扁平节点列表 |
 | `/catalog/tree` | GET | 获取完整目录的嵌套树结构 |
 | `/catalog/bizPath` | GET | 查询业务路径 |
@@ -191,6 +192,7 @@ samples/catalog-demo/src/main/resources/static/catalog-demo/index.html
 | `/catalog/subtree` | GET | 查询指定节点子树的嵌套树结构 |
 
 > `children` 只返回某个父节点下的直接子节点，更适合作为生产场景里的默认树查询入口。
+> `childrenPage` 在 `children` 的基础上补充分页元数据，适合根节点较多或热点父节点场景。
 > `nodes`、`bizTreeNodes`、`subtreeNodes` 返回的都是按树遍历顺序排列的扁平节点列表。
 > `tree`、`bizTree`、`subtree` 会在后端完成 `children` 组装，直接返回嵌套树结构。
 > 树形节点额外包含 `leaf`、`bindable` 与 `extensions` 字段，便于后续继续扩展叶子节点业务装配策略。

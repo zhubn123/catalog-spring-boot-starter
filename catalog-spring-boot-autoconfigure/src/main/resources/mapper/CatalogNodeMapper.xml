@@ -55,7 +55,15 @@
         SELECT <include refid="Base_Column_List"/>
         FROM catalog_node
         WHERE parent_id = #{parentId}
-        ORDER BY sort
+        ORDER BY sort, id
+    </select>
+
+    <select id="selectByParentIdPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM catalog_node
+        WHERE parent_id = #{parentId}
+        ORDER BY sort, id
+        LIMIT #{size} OFFSET #{offset}
     </select>
 
     <select id="selectByPathPrefix" resultMap="BaseResultMap">
@@ -67,6 +75,10 @@
 
     <select id="selectMaxSortByParent" resultType="java.lang.Integer">
         SELECT MAX(sort) FROM catalog_node WHERE parent_id = #{parentId}
+    </select>
+
+    <select id="countByParentId" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM catalog_node WHERE parent_id = #{parentId}
     </select>
 
     <select id="countChildren" resultType="java.lang.Integer">

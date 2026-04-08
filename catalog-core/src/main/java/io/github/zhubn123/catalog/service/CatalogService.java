@@ -1,5 +1,6 @@
 package io.github.zhubn123.catalog.service;
 
+import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 
@@ -68,6 +69,14 @@ public interface CatalogService {
      * 当 {@code parentId} 为空、为 {@code 0} 或小于 {@code 0} 时，表示查询根节点列表。</p>
      */
     List<CatalogNode> listChildrenNodes(Long parentId);
+
+    /**
+     * 按父节点分页查询直接子节点。
+     *
+     * <p>该接口适合根节点较多或某个父节点下子节点数量较大的生产场景；
+     * 当 {@code parentId} 为空、为 {@code 0} 或小于 {@code 0} 时，表示查询根节点列表。</p>
+     */
+    CatalogPage<CatalogNode> pageChildrenNodes(Long parentId, Integer page, Integer size);
 
     /**
      * 返回完整目录的嵌套树结构。

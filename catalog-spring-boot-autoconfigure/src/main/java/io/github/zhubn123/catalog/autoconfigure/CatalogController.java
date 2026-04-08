@@ -1,5 +1,6 @@
 package io.github.zhubn123.catalog.autoconfigure;
 
+import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.exception.CatalogException;
@@ -200,6 +201,17 @@ public class CatalogController {
     @GetMapping("/children")
     public List<CatalogNode> children(Long parentId) {
         return catalogService.listChildrenNodes(parentId);
+    }
+
+    /**
+     * 按父节点分页查询直接子节点。
+     *
+     * <p>默认返回第 1 页、每页 20 条，适合根节点较多或热点父节点场景；
+     * 当 {@code parentId} 为空、为 {@code 0} 或小于 {@code 0} 时，表示查询根节点列表。</p>
+     */
+    @GetMapping("/childrenPage")
+    public CatalogPage<CatalogNode> childrenPage(Long parentId, Integer page, Integer size) {
+        return catalogService.pageChildrenNodes(parentId, page, size);
     }
 
     /**

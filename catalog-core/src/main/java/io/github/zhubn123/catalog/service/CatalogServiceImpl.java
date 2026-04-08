@@ -1,5 +1,6 @@
 package io.github.zhubn123.catalog.service;
 
+import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
@@ -105,6 +106,11 @@ public class CatalogServiceImpl implements CatalogService {
     @Override
     public List<CatalogNode> listChildrenNodes(Long parentId) {
         return queryService.listChildrenNodes(parentId);
+    }
+
+    @Override
+    public CatalogPage<CatalogNode> pageChildrenNodes(Long parentId, Integer page, Integer size) {
+        return queryService.pageChildrenNodes(parentId, page, size);
     }
 
     @Override
