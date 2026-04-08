@@ -1,27 +1,41 @@
 import { extractErrorMessage } from "../api.js";
 
+function splitBizIds(text) {
+    return text
+        .split(/[\n,，]+/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+}
+
 export function createBindingActions(context) {
     const {
         api,
         ElMessage,
         selectedNode,
         bindForm,
-        batchBindForm,
+        bindManyForm,
+        directBindings,
+        bindingListBizType,
         loadTree,
-        loadDirectBindings,
-        bindingListBizType
+        loadDirectBindings
     } = context;
 
-    const bindBiz = async () => {
+    const ensureBindableNode = () => {
         if (!selectedNode.value) {
             ElMessage.warning("请先从左侧目录树选择一个节点");
-            return;
+            return false;
         }
         if (!selectedNode.value.bindable) {
-            ElMessage.warning("当前节点不是叶子节点，不能直接绑定业务对象");
+            ElMessage.warning("当前节点不是可绑定业务对象的叶子节点");
+            return false;
+        }
+        return true;
+    };
+
+    const bindBiz = async () => {
+        if (!ensureBindableNode()) {
             return;
         }
-
         const bizId = bindForm.bizId.trim();
         if (!bizId || !bindForm.bizType) {
             ElMessage.warning("请填写完整的业务绑定信息");
@@ -43,36 +57,44 @@ export function createBindingActions(context) {
         }
     };
 
-    const batchBind = async () => {
-        const nodeIds = batchBindForm.nodeIds
-            .split(",")
-            .map((item) => Number(item.trim()))
-            .filter((item) => Number.isFinite(item) && item > 0);
-        const bizIds = batchBindForm.bizIds
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean);
-
-        if (!batchBindForm.bizType || nodeIds.length === 0 || bizIds.length === 0) {
-            ElMessage.warning("请填写完整的批量绑定信息");
+    const bindManyBizToCurrentNode = async () => {
+        if (!ensureBindableNode()) {
             return;
         }
-        if (nodeIds.length !== bizIds.length) {
-            ElMessage.warning("节点 ID 和业务 ID 的数量必须一一对应");
+        const bizIds = splitBizIds(bindManyForm.bizIdsText || "");
+        if (bizIds.length === 0 || !bindForm.bizType) {
+            ElMessage.warning("请填写要追加绑定的业务 ID 和业务类型");
             return;
         }
 
-        try {
-            await api.postJson("/catalog/bind/pairs", {
-                nodeIds,
-                bizIds,
-                bizType: batchBindForm.bizType
-            });
-            ElMessage.success("批量绑定成功");
-            await loadTree();
-        } catch (error) {
-            ElMessage.error("批量绑定失败: " + extractErrorMessage(error));
+        const failures = [];
+        let successCount = 0;
+        for (const bizId of bizIds) {
+            try {
+                await api.postJson("/catalog/bind", {
+                    nodeId: selectedNode.value.id,
+                    bizId,
+                    bizType: bindForm.bizType
+                });
+                successCount += 1;
+            } catch (error) {
+                failures.push(`${bizId}: ${extractErrorMessage(error)}`);
+            }
         }
+
+        bindingListBizType.value = bindForm.bizType;
+        bindManyForm.bizIdsText = "";
+        await loadTree();
+        if (successCount > 0 && failures.length === 0) {
+            ElMessage.success(`已追加绑定 ${successCount} 个业务对象`);
+            return;
+        }
+        if (successCount > 0) {
+            ElMessage.warning(`成功 ${successCount} 个，失败 ${failures.length} 个`);
+            console.warn("bindManyBizToCurrentNode failures", failures);
+            return;
+        }
+        ElMessage.error("批量追加绑定失败: " + failures.join("; "));
     };
 
     const quickUnbind = async (binding) => {
@@ -86,7 +108,12 @@ export function createBindingActions(context) {
                 bizId: binding.bizId,
                 bizType: binding.bizType
             });
+            const index = directBindings.value.findIndex((item) => item.bizId === binding.bizId && item.bizType === binding.bizType);
+            if (index >= 0) {
+                directBindings.value.splice(index, 1);
+            }
             ElMessage.success("绑定已解除");
+            await loadTree();
             await loadDirectBindings(selectedNode.value.id);
         } catch (error) {
             ElMessage.error("解除绑定失败: " + extractErrorMessage(error));
@@ -95,7 +122,7 @@ export function createBindingActions(context) {
 
     return {
         bindBiz,
-        batchBind,
+        bindManyBizToCurrentNode,
         quickUnbind
     };
 }

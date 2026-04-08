@@ -28,12 +28,8 @@ export function createBusinessActions(context) {
         }
 
         try {
-            // 业务示例只负责演示“合同目录 + 交付物叶子节点”的典型链路。
             const result = await api.put("/contract", {
-                contract: {
-                    contractId,
-                    contractName
-                },
+                contract: { contractId, contractName },
                 items: contractForm.items
                     .map((item) => ({
                         deliveryId: item.deliveryId.trim(),

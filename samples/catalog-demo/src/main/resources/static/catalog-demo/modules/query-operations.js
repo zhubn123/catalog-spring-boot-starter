@@ -1,22 +1,33 @@
 import { extractErrorMessage } from "../api.js";
 import { normalizeTree } from "../tree-utils.js";
 
+function resolveParentId(rawParentId, selectedNode) {
+    if (rawParentId !== null && rawParentId !== undefined && String(rawParentId).trim() !== "") {
+        return Number(rawParentId);
+    }
+    if (selectedNode?.value?.id) {
+        return Number(selectedNode.value.id);
+    }
+    return 0;
+}
+
 export function createQueryActions(context) {
     const {
         api,
         ElMessage,
         selectedNode,
-        queryBizPathForm,
         bizPathResult,
-        queryBizNodesForm,
-        bizNodesResult,
-        queryNodeBizForm,
-        nodeBizResult,
+        queryBizPathForm,
+        childrenQueryForm,
+        childrenItems,
+        childrenMeta,
         queryBizTreeForm,
         querySubtreeForm,
         queryTreeData,
         queryTreeTitle,
         queryTreeSummary,
+        repairForm,
+        repairResult,
         clearQueryTree
     } = context;
 
@@ -26,9 +37,7 @@ export function createQueryActions(context) {
             return;
         }
         try {
-            const result = await api.get(
-                `/catalog/bizPath?bizId=${queryBizPathForm.bizId}&bizType=${queryBizPathForm.bizType}`
-            );
+            const result = await api.get(`/catalog/bizPath?bizId=${queryBizPathForm.bizId}&bizType=${queryBizPathForm.bizType}`);
             bizPathResult.value = result;
             if (result.length === 0) {
                 ElMessage.info("未找到该业务对象的目录路径");
@@ -38,42 +47,40 @@ export function createQueryActions(context) {
         }
     };
 
-    const queryBizNodes = async () => {
-        if (!queryBizNodesForm.bizId || !queryBizNodesForm.bizType) {
-            ElMessage.warning("请填写完整的业务节点查询条件");
-            return;
-        }
+    const queryChildren = async () => {
+        const parentId = resolveParentId(childrenQueryForm.parentId, selectedNode);
         try {
-            const result = await api.get(
-                `/catalog/bizNodes?bizId=${queryBizNodesForm.bizId}&bizType=${queryBizNodesForm.bizType}`
-            );
-            bizNodesResult.value = result;
+            const result = await api.get(`/catalog/children?parentId=${parentId}`);
+            childrenItems.value = result;
+            childrenMeta.value = { mode: "list", parentId };
             if (result.length === 0) {
-                ElMessage.info("当前业务对象没有绑定目录节点");
+                ElMessage.info("当前父节点下暂无直接子节点");
             }
         } catch (error) {
-            ElMessage.error("查询业务节点失败: " + extractErrorMessage(error));
+            ElMessage.error("查询直接子节点失败: " + extractErrorMessage(error));
         }
     };
 
-    const queryNodeBiz = async () => {
-        const effectiveNodeId = queryNodeBizForm.nodeId || selectedNode.value?.id || "";
-        if (!effectiveNodeId || !queryNodeBizForm.bizType) {
-            ElMessage.warning("请填写节点 ID 和业务类型，或先在左侧选中节点");
-            return;
-        }
-
+    const queryChildrenPage = async () => {
+        const parentId = resolveParentId(childrenQueryForm.parentId, selectedNode);
+        const page = Number(childrenQueryForm.page || 1);
+        const size = Number(childrenQueryForm.size || 20);
         try {
-            const result = await api.get(
-                `/catalog/nodeBiz?nodeId=${effectiveNodeId}&bizType=${queryNodeBizForm.bizType}`
-            );
-            nodeBizResult.value = result;
-            queryNodeBizForm.nodeId = String(effectiveNodeId);
-            if (result.length === 0) {
-                ElMessage.info("该节点子树下暂无此类型业务绑定");
+            const result = await api.get(`/catalog/childrenPage?parentId=${parentId}&page=${page}&size=${size}`);
+            childrenItems.value = result.items || [];
+            childrenMeta.value = {
+                mode: "page",
+                parentId,
+                page: result.page,
+                size: result.size,
+                total: result.total,
+                hasNext: result.hasNext
+            };
+            if ((result.items || []).length === 0) {
+                ElMessage.info("当前分页结果为空");
             }
         } catch (error) {
-            ElMessage.error("查询子树业务失败: " + extractErrorMessage(error));
+            ElMessage.error("分页查询子节点失败: " + extractErrorMessage(error));
         }
     };
 
@@ -82,17 +89,11 @@ export function createQueryActions(context) {
             ElMessage.warning("请填写完整的业务局部树查询条件");
             return;
         }
-
         try {
-            // 直接使用后端返回的嵌套树，避免前端再拿扁平列表重新组装。
-            const result = normalizeTree(await api.get(
-                `/catalog/bizTree?bizId=${queryBizTreeForm.bizId}&bizType=${queryBizTreeForm.bizType}`
-            ));
+            const result = normalizeTree(await api.get(`/catalog/bizTree?bizId=${queryBizTreeForm.bizId}&bizType=${queryBizTreeForm.bizType}`));
             queryTreeData.value = result;
             queryTreeTitle.value = "业务局部树";
-            queryTreeSummary.value = result.length === 0
-                ? "当前业务对象没有可展示的目录树"
-                : "展示绑定节点及其祖先节点的树形结构";
+            queryTreeSummary.value = result.length === 0 ? "当前业务对象没有可展示的局部树。" : "展示业务对象绑定节点及其祖先节点。";
             if (result.length === 0) {
                 ElMessage.info("未找到该业务对象对应的局部树");
             }
@@ -103,21 +104,17 @@ export function createQueryActions(context) {
     };
 
     const querySubtree = async () => {
-        const effectiveNodeId = querySubtreeForm.nodeId || selectedNode.value?.id || "";
-        if (!effectiveNodeId) {
-            ElMessage.warning("请填写节点 ID，或先从左侧选中节点");
+        const nodeId = querySubtreeForm.nodeId || selectedNode.value?.id || "";
+        if (!nodeId) {
+            ElMessage.warning("请填写节点 ID，或先从左侧选择节点");
             return;
         }
-
         try {
-            // 子树预览优先复用当前选中节点，减少手填 nodeId 的负担。
-            const result = normalizeTree(await api.get(`/catalog/subtree?nodeId=${effectiveNodeId}`));
+            const result = normalizeTree(await api.get(`/catalog/subtree?nodeId=${nodeId}`));
             queryTreeData.value = result;
             queryTreeTitle.value = "节点子树";
-            queryTreeSummary.value = result.length === 0
-                ? "当前节点没有子树结果"
-                : "展示当前节点及其全部后代节点";
-            querySubtreeForm.nodeId = String(effectiveNodeId);
+            queryTreeSummary.value = result.length === 0 ? "当前节点没有子树结果。" : "展示当前节点及其全部后代节点。";
+            querySubtreeForm.nodeId = String(nodeId);
             if (result.length === 0) {
                 ElMessage.info("未找到当前节点的子树");
             }
@@ -127,11 +124,56 @@ export function createQueryActions(context) {
         }
     };
 
+    const repairSelectedParentSorts = async () => {
+        const parentId = selectedNode.value?.parentId ?? 0;
+        try {
+            repairResult.value = await api.post("/catalog/admin/repairSort", { parentId });
+            ElMessage.success("已完成当前父层排序修复");
+        } catch (error) {
+            ElMessage.error("修复排序失败: " + extractErrorMessage(error));
+        }
+    };
+
+    const repairRootSorts = async () => {
+        try {
+            repairResult.value = await api.post("/catalog/admin/repairSort", { parentId: 0 });
+            ElMessage.success("已完成根节点层排序修复");
+        } catch (error) {
+            ElMessage.error("修复根节点层排序失败: " + extractErrorMessage(error));
+        }
+    };
+
+    const repairSortByParent = async () => {
+        if (String(repairForm.parentId).trim() === "") {
+            ElMessage.warning("请先填写父节点 ID");
+            return;
+        }
+        try {
+            repairResult.value = await api.post("/catalog/admin/repairSort", { parentId: Number(repairForm.parentId) });
+            ElMessage.success("已完成指定父节点排序修复");
+        } catch (error) {
+            ElMessage.error("修复排序失败: " + extractErrorMessage(error));
+        }
+    };
+
+    const repairAllSorts = async () => {
+        try {
+            repairResult.value = await api.post("/catalog/admin/repairSort/all");
+            ElMessage.success("已完成整棵树排序修复");
+        } catch (error) {
+            ElMessage.error("整棵树排序修复失败: " + extractErrorMessage(error));
+        }
+    };
+
     return {
         queryBizPath,
-        queryBizNodes,
-        queryNodeBiz,
+        queryChildren,
+        queryChildrenPage,
         queryBizTree,
-        querySubtree
+        querySubtree,
+        repairSelectedParentSorts,
+        repairRootSorts,
+        repairSortByParent,
+        repairAllSorts
     };
 }

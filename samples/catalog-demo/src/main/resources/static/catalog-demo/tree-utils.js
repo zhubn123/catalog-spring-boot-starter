@@ -3,7 +3,6 @@ export function normalizeTree(nodes) {
         return [];
     }
 
-    // 后端已经返回嵌套树，这里只做前端兜底清洗和排序。
     return nodes
         .filter(Boolean)
         .map((node) => ({
@@ -52,7 +51,6 @@ export function findNodeById(nodes, nodeId) {
         return null;
     }
 
-    // 刷新树后，需要在新树里重新定位旧的选中节点。
     for (const node of nodes) {
         if (!node) {
             continue;

@@ -9,7 +9,6 @@ const { ref, reactive, computed, watch, onMounted } = Vue;
 const { ElMessage } = ElementPlus;
 
 function resolveApiBase() {
-    // 从 8080 打开时走同源；直接预览静态文件时回退到本地后端。
     if (window.location.port === "8080") {
         return window.location.origin;
     }
@@ -21,7 +20,6 @@ const API_BASE = resolveApiBase();
 export function createCatalogDemoApp() {
     return {
         setup() {
-            // 左侧目录树和右侧详情共享一份选中节点状态，避免各区域各自维护。
             const treeRef = ref(null);
             const treeData = ref([]);
             const selectedNode = ref(null);
@@ -34,27 +32,22 @@ export function createCatalogDemoApp() {
             const queryTreeSummary = ref("");
             const contractNodeId = ref("");
             const apiBase = API_BASE;
+            const childrenItems = ref([]);
+            const childrenMeta = ref(null);
+            const repairResult = ref(null);
+            const bizPathResult = ref([]);
 
-            const treeProps = {
-                children: "children",
-                label: "name"
-            };
+            const treeProps = { children: "children", label: "name" };
 
             const addForm = reactive({ parentId: "", name: "" });
-            const batchAddForm = reactive({ parentId: "", names: "" });
             const updateForm = reactive({ nodeId: "", name: "", code: "", sort: "" });
             const bindForm = reactive({ nodeId: "", bizId: "", bizType: "deliver" });
-            const batchBindForm = reactive({ nodeIds: "", bizIds: "", bizType: "deliver" });
-
+            const bindManyForm = reactive({ bizIdsText: "" });
+            const childrenQueryForm = reactive({ parentId: "", page: 1, size: 20 });
+            const repairForm = reactive({ parentId: "" });
             const queryBizPathForm = reactive({ bizId: "", bizType: "deliver" });
-            const bizPathResult = ref([]);
-            const queryBizNodesForm = reactive({ bizId: "", bizType: "deliver" });
-            const bizNodesResult = ref([]);
-            const queryNodeBizForm = reactive({ nodeId: "", bizType: "deliver" });
-            const nodeBizResult = ref([]);
             const queryBizTreeForm = reactive({ bizId: "", bizType: "deliver" });
             const querySubtreeForm = reactive({ nodeId: "" });
-
             const contractForm = reactive({
                 contractId: "",
                 contractName: "",
@@ -77,7 +70,6 @@ export function createCatalogDemoApp() {
 
             const hasLogText = (value) => typeof value === "string" && value.trim().length > 0;
             const getApiLogStatusText = (log) => log.success ? "成功" : "失败";
-
             const api = createApi({ baseUrl: API_BASE, logApi });
 
             const clearQueryTree = () => {
@@ -90,13 +82,11 @@ export function createCatalogDemoApp() {
                 selectedNode.value = null;
                 directBindings.value = [];
                 addForm.parentId = "";
-                batchAddForm.parentId = "";
                 updateForm.nodeId = "";
                 updateForm.name = "";
                 updateForm.code = "";
                 updateForm.sort = "";
                 bindForm.nodeId = "";
-                queryNodeBizForm.nodeId = "";
                 querySubtreeForm.nodeId = "";
             };
 
@@ -105,16 +95,13 @@ export function createCatalogDemoApp() {
                     clearSelection();
                     return;
                 }
-
                 selectedNode.value = node;
                 addForm.parentId = String(node.id ?? "");
-                batchAddForm.parentId = String(node.id ?? "");
                 updateForm.nodeId = String(node.id ?? "");
                 updateForm.name = node.name || "";
                 updateForm.code = node.code || "";
                 updateForm.sort = node.sort ?? "";
                 bindForm.nodeId = String(node.id ?? "");
-                queryNodeBizForm.nodeId = String(node.id ?? "");
                 querySubtreeForm.nodeId = String(node.id ?? "");
             };
 
@@ -124,14 +111,8 @@ export function createCatalogDemoApp() {
                     return;
                 }
                 try {
-                    // 这里查的是当前节点的直接绑定，不再混用子树聚合查询。
-                    const bizIds = await api.get(
-                        `/catalog/nodeBindings?nodeId=${nodeId}&bizType=${bindingListBizType.value}`
-                    );
-                    directBindings.value = (bizIds || []).map((bizId) => ({
-                        bizId,
-                        bizType: bindingListBizType.value
-                    }));
+                    const bizIds = await api.get(`/catalog/nodeBindings?nodeId=${nodeId}&bizType=${bindingListBizType.value}`);
+                    directBindings.value = (bizIds || []).map((bizId) => ({ bizId, bizType: bindingListBizType.value }));
                 } catch (error) {
                     directBindings.value = [];
                     ElMessage.error("加载当前节点绑定失败: " + extractErrorMessage(error));
@@ -143,7 +124,6 @@ export function createCatalogDemoApp() {
                 try {
                     const tree = normalizeTree(await api.get("/catalog/tree"));
                     treeData.value = tree;
-
                     if (previousNodeId) {
                         const matchedNode = findNodeById(tree, previousNodeId);
                         if (matchedNode) {
@@ -152,13 +132,7 @@ export function createCatalogDemoApp() {
                             return;
                         }
                     }
-
-                    if (previousNodeId) {
-                        // 原选中节点如果已经不在新树里，右侧表单也要一起清掉。
-                        clearSelection();
-                    } else if (tree.length === 0) {
-                        clearSelection();
-                    } else if (!preserveSelection) {
+                    if (previousNodeId || tree.length === 0 || !preserveSelection) {
                         clearSelection();
                     }
                 } catch (error) {
@@ -239,23 +213,23 @@ export function createCatalogDemoApp() {
                 selectedNodeId,
                 treeData,
                 addForm,
-                batchAddForm,
                 updateForm,
                 bindForm,
-                batchBindForm,
+                bindManyForm,
                 directBindings,
                 bindingListBizType,
-                queryBizPathForm,
                 bizPathResult,
-                queryBizNodesForm,
-                bizNodesResult,
-                queryNodeBizForm,
-                nodeBizResult,
+                queryBizPathForm,
+                childrenQueryForm,
+                childrenItems,
+                childrenMeta,
                 queryBizTreeForm,
                 querySubtreeForm,
                 queryTreeData,
                 queryTreeTitle,
                 queryTreeSummary,
+                repairForm,
+                repairResult,
                 contractForm,
                 contractNodeId,
                 attachForm,
@@ -266,10 +240,7 @@ export function createCatalogDemoApp() {
                 syncFormsFromSelectedNode
             };
 
-            const nodeActions = createNodeActions({
-                ...sharedContext,
-                ElMessageBox: ElementPlus.ElMessageBox
-            });
+            const nodeActions = createNodeActions({ ...sharedContext, ElMessageBox: ElementPlus.ElMessageBox });
             const bindingActions = createBindingActions(sharedContext);
             const queryActions = createQueryActions(sharedContext);
             const businessActions = createBusinessActions(sharedContext);
@@ -283,7 +254,6 @@ export function createCatalogDemoApp() {
                 treeData,
                 treeProps,
                 selectedNode,
-                selectedNodeId,
                 activeTab,
                 apiLogs,
                 apiBase,
@@ -294,16 +264,16 @@ export function createCatalogDemoApp() {
                 queryTreeSummary,
                 contractNodeId,
                 addForm,
-                batchAddForm,
                 updateForm,
                 bindForm,
-                batchBindForm,
+                bindManyForm,
+                childrenQueryForm,
+                childrenItems,
+                childrenMeta,
+                repairForm,
+                repairResult,
                 queryBizPathForm,
                 bizPathResult,
-                queryBizNodesForm,
-                bizNodesResult,
-                queryNodeBizForm,
-                nodeBizResult,
                 queryBizTreeForm,
                 querySubtreeForm,
                 contractForm,

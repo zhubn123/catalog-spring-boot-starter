@@ -1,423 +1,369 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catalog 目录树 Demo</title>
-    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
-    <link rel="stylesheet" href="./catalog-demo.css">
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://unpkg.com/element-plus"></script>
-    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catalog 目录树 Demo</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+  <link rel="stylesheet" href="./catalog-demo.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/element-plus"></script>
+  <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 </head>
 <body>
 <div id="app">
-    <div class="app-container">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>Catalog 目录树 Demo</h2>
-                <p>左侧直接展示后端返回的嵌套树，右侧按节点操作、查询和业务示例分别演示。</p>
-            </div>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Catalog 目录树 Demo</h2>
+        <p>左侧展示后端返回的嵌套树，右侧集中演示节点维护、叶子节点多业务绑定、增量查询、排序治理和业务示例。</p>
+      </div>
 
-            <div class="toolbar toolbar-lite">
-                <el-button type="primary" size="small" @click="showAddRootDialog">
-                    <el-icon><plus></plus></el-icon>
-                    新建根节点
+      <div class="toolbar toolbar-lite">
+        <el-button type="primary" size="small" @click="showAddRootDialog">
+          <el-icon><plus></plus></el-icon>
+          新建根节点
+        </el-button>
+        <el-button size="small" @click="loadTree">
+          <el-icon><refresh></refresh></el-icon>
+          刷新
+        </el-button>
+        <el-button size="small" @click="expandAll">展开</el-button>
+        <el-button size="small" @click="collapseAll">收起</el-button>
+      </div>
+
+      <div class="tree-container">
+        <el-tree
+          ref="treeRef"
+          :data="treeData"
+          :props="treeProps"
+          node-key="id"
+          default-expand-all
+          highlight-current
+          draggable
+          :allow-drop="allowDrop"
+          :allow-drag="allowDrag"
+          :expand-on-click-node="false"
+          @node-click="handleNodeClick"
+          @node-drop="handleDrop">
+          <template #default="{ data }">
+            <span class="custom-tree-node">
+              <span class="node-label">
+                <el-icon v-if="!isLeaf(data)"><folder></folder></el-icon>
+                <el-icon v-else><document></document></el-icon>
+                <span class="node-name">{{ data.name }}</span>
+                <span class="node-id">#{{ data.id }}</span>
+                <span v-if="isLeaf(data)" class="leaf-badge">叶子</span>
+                <span v-if="data.bindable" class="bindable-badge">可绑定</span>
+                <span v-if="getBindingCount(data) > 0" class="binding-count-badge">已绑 {{ getBindingCount(data) }}</span>
+              </span>
+              <span class="node-actions">
+                <el-button type="primary" link size="small" @click.stop="showAddChildDialog(data)">
+                  <el-icon><plus></plus></el-icon>
                 </el-button>
-                <el-button size="small" @click="loadTree">
-                    <el-icon><refresh></refresh></el-icon>
-                    刷新
+                <el-button type="primary" link size="small" @click.stop="showEditDialog(data)">
+                  <el-icon><edit></edit></el-icon>
                 </el-button>
-                <el-button size="small" @click="expandAll">展开全部</el-button>
-                <el-button size="small" @click="collapseAll">收起全部</el-button>
-            </div>
+                <el-button type="danger" link size="small" @click.stop="handleDelete(data)">
+                  <el-icon><delete></delete></el-icon>
+                </el-button>
+              </span>
+            </span>
+          </template>
+        </el-tree>
 
-            <div class="tree-container">
-                <el-tree
-                        ref="treeRef"
-                        :data="treeData"
-                        :props="treeProps"
-                        node-key="id"
-                        default-expand-all
-                        highlight-current
-                        draggable
-                        :allow-drop="allowDrop"
-                        :allow-drag="allowDrag"
-                        :expand-on-click-node="false"
-                        @node-click="handleNodeClick"
-                        @node-drop="handleDrop">
-                    <template #default="{ data }">
-                        <span class="custom-tree-node">
-                            <span class="node-label">
-                                <el-icon v-if="!isLeaf(data)"><folder></folder></el-icon>
-                                <el-icon v-else><document></document></el-icon>
-                                <span>{{ data.name }}</span>
-                                <span class="node-id">#{{ data.id }}</span>
-                                <span v-if="isLeaf(data)" class="leaf-badge">叶子</span>
-                                <span v-if="data.bindable" class="bindable-badge">可绑定</span>
-                                <span v-if="getBindingCount(data) > 0" class="binding-count-badge">已绑 {{ getBindingCount(data) }}</span>
-                                <span v-if="getBindingPreview(data)" class="binding-preview">{{ getBindingPreview(data) }}</span>
-                            </span>
-                            <span class="node-actions">
-                                <el-button type="primary" link size="small" @click.stop="showAddChildDialog(data)">
-                                    <el-icon><plus></plus></el-icon>
-                                </el-button>
-                                <el-button type="primary" link size="small" @click.stop="showEditDialog(data)">
-                                    <el-icon><edit></edit></el-icon>
-                                </el-button>
-                                <el-button type="danger" link size="small" @click.stop="handleDelete(data)">
-                                    <el-icon><delete></delete></el-icon>
-                                </el-button>
-                            </span>
-                        </span>
-                    </template>
-                </el-tree>
+        <div v-if="treeData.length === 0" class="empty-state">
+          <el-icon size="48"><folder-opened></folder-opened></el-icon>
+          <p>暂无目录数据</p>
+          <p>点击上方“新建根节点”开始体验。</p>
+        </div>
+      </div>
+    </aside>
 
-                <div v-if="treeData.length === 0" class="empty-state">
-                    <el-icon size="48"><folder-opened></folder-opened></el-icon>
-                    <p>暂无目录数据</p>
-                    <p>点击上方“新建根节点”开始创建</p>
+    <main class="main-content">
+      <div class="toolbar status-bar">
+        <span class="current-label">当前节点</span>
+        <el-tag v-if="selectedNode" type="success">{{ selectedNode.name }} (#{{ selectedNode.id }})</el-tag>
+        <el-tag v-else type="info">未选择节点</el-tag>
+        <el-tag v-if="selectedNode && isLeaf(selectedNode)" type="success">叶子节点</el-tag>
+        <el-tag v-if="selectedNode && selectedNode.bindable" type="warning">可绑定业务对象</el-tag>
+        <span v-if="selectedNode" class="path-text">路径：{{ selectedNode.path || '-' }}</span>
+        <span class="drag-tip">左侧目录树支持直接拖拽排序。</span>
+      </div>
+
+      <div class="content-area">
+        <el-tabs v-model="activeTab" class="tabs-container">
+          <el-tab-pane label="节点与绑定" name="node">
+            <div class="panel-grid">
+              <section class="panel panel-span-2">
+                <div class="panel-title">节点概览</div>
+                <div v-if="selectedNode" class="summary-grid">
+                  <div class="summary-item"><span class="summary-label">节点名称</span><span class="summary-value">{{ selectedNode.name }}</span></div>
+                  <div class="summary-item"><span class="summary-label">节点 ID</span><span class="summary-value">{{ selectedNode.id }}</span></div>
+                  <div class="summary-item"><span class="summary-label">父节点</span><span class="summary-value">{{ selectedNode.parentId || 0 }}</span></div>
+                  <div class="summary-item"><span class="summary-label">sort 值</span><span class="summary-value">{{ selectedNode.sort ?? '-' }}</span></div>
+                  <div class="summary-item summary-item-wide"><span class="summary-label">节点路径</span><span class="summary-value">{{ selectedNode.path || '-' }}</span></div>
+                  <div class="summary-item summary-item-wide">
+                    <span class="summary-label">树节点扩展摘要</span>
+                    <span class="summary-value">{{ getBindingPreview(selectedNode, 4) || '当前节点暂无直接业务绑定摘要。' }}</span>
+                  </div>
                 </div>
+                <el-empty v-else description="先从左侧选择一个节点，再继续操作。"></el-empty>
+              </section>
+
+              <section class="panel">
+                <div class="panel-title">新增 / 更新节点</div>
+                <div class="form-row">
+                  <el-input v-model="addForm.parentId" class="w-160" placeholder="父节点 ID，留空表示根节点"></el-input>
+                  <el-input v-model="addForm.name" placeholder="新节点名称"></el-input>
+                  <el-button type="primary" @click="addNode">新增节点</el-button>
+                </div>
+                <div class="form-row">
+                  <el-input v-model="updateForm.nodeId" class="w-120" placeholder="节点 ID" disabled></el-input>
+                  <el-input v-model="updateForm.name" placeholder="节点名称"></el-input>
+                  <el-input v-model="updateForm.code" placeholder="节点编码"></el-input>
+                </div>
+                <div class="form-row">
+                  <el-input v-model="updateForm.sort" class="w-160" placeholder="目标位置索引（0 开始）"></el-input>
+                  <el-button type="primary" @click="updateSelectedNode" :disabled="!selectedNode">保存当前节点</el-button>
+                  <el-button type="danger" plain @click="handleDelete(selectedNode)" :disabled="!selectedNode">删除当前节点</el-button>
+                </div>
+                <p class="muted-tip">拖拽更适合改结构；这里演示名称、编码和目标位置索引的更新。</p>
+              </section>
+
+              <section class="panel panel-span-2">
+                <div class="panel-title">叶子节点业务绑定</div>
+                <p class="muted-tip">当前语义是：同一个业务对象只能绑定一个目录节点，但同一个叶子节点可以绑定多个业务对象。</p>
+                <div class="form-row">
+                  <el-select v-model="bindForm.bizType" class="w-160" placeholder="业务类型">
+                    <el-option label="deliver" value="deliver"></el-option>
+                    <el-option label="contract" value="contract"></el-option>
+                    <el-option label="task" value="task"></el-option>
+                    <el-option label="custom" value="custom"></el-option>
+                  </el-select>
+                  <el-input v-model="bindForm.bizId" placeholder="单个业务 ID" :disabled="!selectedNode || !selectedNode.bindable"></el-input>
+                  <el-button type="primary" @click="bindBiz" :disabled="!selectedNode">绑定到当前节点</el-button>
+                </div>
+                <div class="form-row align-start">
+                  <el-input v-model="bindManyForm.bizIdsText" class="w-flex" type="textarea" :rows="3" placeholder="多个业务 ID，支持逗号或换行分隔，会逐个追加到当前叶子节点。" :disabled="!selectedNode || !selectedNode.bindable"></el-input>
+                </div>
+                <div class="form-row justify-end">
+                  <el-button type="primary" plain @click="bindManyBizToCurrentNode" :disabled="!selectedNode">批量追加绑定</el-button>
+                </div>
+                <div class="form-row compact-row">
+                  <el-select v-model="bindingListBizType" class="w-160" placeholder="查看类型">
+                    <el-option label="deliver" value="deliver"></el-option>
+                    <el-option label="contract" value="contract"></el-option>
+                    <el-option label="task" value="task"></el-option>
+                    <el-option label="custom" value="custom"></el-option>
+                  </el-select>
+                  <el-button @click="loadDirectBindings()" :disabled="!selectedNode">刷新当前节点绑定</el-button>
+                </div>
+                <div v-if="selectedNode" class="binding-list">
+                  <div v-if="directBindings.length > 0">
+                    <div v-for="binding in directBindings" :key="binding.bizId + binding.bizType" class="binding-item">
+                      <span class="biz-info">业务 ID：{{ binding.bizId }} <span class="biz-type">{{ binding.bizType }}</span></span>
+                      <el-button type="danger" link size="small" @click="quickUnbind(binding)">解除绑定</el-button>
+                    </div>
+                  </div>
+                  <el-empty v-else description="当前节点暂无该类型的直接绑定。" :image-size="60"></el-empty>
+                </div>
+                <el-empty v-else description="请先选择节点。"></el-empty>
+              </section>
             </div>
-        </aside>
+          </el-tab-pane>
 
-        <main class="main-content">
-            <div class="toolbar status-bar">
-                <span class="current-label">当前节点</span>
-                <el-tag v-if="selectedNode" type="success">{{ selectedNode.name }} (#{{ selectedNode.id }})</el-tag>
-                <el-tag v-else type="info">未选择节点</el-tag>
-                <el-tag v-if="selectedNode && isLeaf(selectedNode)" type="success">叶子节点</el-tag>
-                <el-tag v-if="selectedNode && selectedNode.bindable" type="warning">可绑定业务对象</el-tag>
-                <span v-if="selectedNode" class="path-text">路径：{{ selectedNode.path || '-' }}</span>
-                <span class="drag-tip">拖拽左侧目录树即可移动节点</span>
+          <el-tab-pane label="查询与治理" name="query">
+            <div class="panel-grid">
+              <section class="panel panel-span-2">
+                <div class="panel-title">直接子节点与分页查询</div>
+                <p class="muted-tip">这里演示当前更推荐的生产查询路径：按父节点增量查询，而不是默认整树全量读取。</p>
+                <div class="form-row">
+                  <el-input v-model="childrenQueryForm.parentId" class="w-160" placeholder="父节点 ID，留空用当前选中节点，输入 0 查根节点"></el-input>
+                  <el-input v-model="childrenQueryForm.page" class="w-120" placeholder="页码"></el-input>
+                  <el-input v-model="childrenQueryForm.size" class="w-120" placeholder="每页条数"></el-input>
+                  <el-button type="primary" @click="queryChildren">children</el-button>
+                  <el-button type="primary" plain @click="queryChildrenPage">childrenPage</el-button>
+                </div>
+                <div v-if="childrenMeta" class="summary-grid summary-grid-compact">
+                  <div class="summary-item"><span class="summary-label">查询模式</span><span class="summary-value">{{ childrenMeta.mode === 'page' ? 'childrenPage' : 'children' }}</span></div>
+                  <div class="summary-item"><span class="summary-label">父节点</span><span class="summary-value">{{ childrenMeta.parentId }}</span></div>
+                  <div class="summary-item" v-if="childrenMeta.mode === 'page'"><span class="summary-label">分页</span><span class="summary-value">第 {{ childrenMeta.page }} 页 / 每页 {{ childrenMeta.size }} 条</span></div>
+                  <div class="summary-item" v-if="childrenMeta.mode === 'page'"><span class="summary-label">总量</span><span class="summary-value">{{ childrenMeta.total }} 条，{{ childrenMeta.hasNext ? '还有下一页' : '已到最后一页' }}</span></div>
+                  <div class="summary-item summary-item-wide" v-if="childrenMeta.mode !== 'page'"><span class="summary-label">结果概览</span><span class="summary-value">当前返回 {{ childrenItems.length }} 个直接子节点。</span></div>
+                </div>
+                <div class="result-list" v-if="childrenItems.length > 0">
+                  <div v-for="item in childrenItems" :key="item.id" class="result-item">
+                    <div>
+                      <div class="result-item-title">{{ item.name }} <span class="node-id">#{{ item.id }}</span></div>
+                      <div class="result-item-meta">parent={{ item.parentId || 0 }} · sort={{ item.sort ?? '-' }} · level={{ item.level ?? '-' }}</div>
+                    </div>
+                    <div class="result-item-badges">
+                      <span v-if="item.leaf" class="leaf-badge">叶子</span>
+                      <span v-if="item.bindable" class="bindable-badge">可绑定</span>
+                    </div>
+                  </div>
+                </div>
+                <el-empty v-else description="这里会显示 children 或 childrenPage 的结果。"></el-empty>
+              </section>
+
+              <section class="panel">
+                <div class="panel-title">路径与树预览</div>
+                <div class="form-row">
+                  <el-input v-model="queryBizPathForm.bizId" placeholder="业务 ID"></el-input>
+                  <el-select v-model="queryBizPathForm.bizType" class="w-160" placeholder="业务类型">
+                    <el-option label="deliver" value="deliver"></el-option>
+                    <el-option label="contract" value="contract"></el-option>
+                    <el-option label="task" value="task"></el-option>
+                  </el-select>
+                  <el-button type="primary" @click="queryBizPath">查询路径</el-button>
+                </div>
+                <div v-if="bizPathResult.length > 0" class="result-block">
+                  <el-tag v-for="(node, index) in bizPathResult" :key="node.id" class="inline-tag">
+                    {{ node.name }}<span v-if="index < bizPathResult.length - 1"> → </span>
+                  </el-tag>
+                </div>
+                <div class="form-row">
+                  <el-input v-model="queryBizTreeForm.bizId" placeholder="业务 ID"></el-input>
+                  <el-select v-model="queryBizTreeForm.bizType" class="w-160" placeholder="业务类型">
+                    <el-option label="deliver" value="deliver"></el-option>
+                    <el-option label="contract" value="contract"></el-option>
+                    <el-option label="task" value="task"></el-option>
+                  </el-select>
+                  <el-button type="primary" @click="queryBizTree">业务局部树</el-button>
+                </div>
+                <div class="form-row">
+                  <el-input v-model="querySubtreeForm.nodeId" class="w-160" placeholder="节点 ID，留空用当前选中节点"></el-input>
+                  <el-button type="primary" @click="querySubtree">节点子树</el-button>
+                </div>
+              </section>
+
+              <section class="panel">
+                <div class="panel-title">排序治理</div>
+                <div class="form-row">
+                  <el-input v-model="repairForm.parentId" class="w-160" placeholder="父节点 ID"></el-input>
+                  <el-button @click="repairSelectedParentSorts" :disabled="!selectedNode">修复当前节点所在父层</el-button>
+                </div>
+                <div class="form-row">
+                  <el-button @click="repairRootSorts">修复根节点层</el-button>
+                  <el-button type="primary" plain @click="repairSortByParent">按输入父节点修复</el-button>
+                  <el-button type="danger" plain @click="repairAllSorts">修复整棵树</el-button>
+                </div>
+                <div v-if="repairResult" class="summary-grid summary-grid-compact">
+                  <div class="summary-item"><span class="summary-label">范围</span><span class="summary-value">{{ repairResult.scope }}</span></div>
+                  <div class="summary-item"><span class="summary-label">父节点</span><span class="summary-value">{{ repairResult.parentId ?? '-' }}</span></div>
+                  <div class="summary-item"><span class="summary-label">扫描分组</span><span class="summary-value">{{ repairResult.groups }}</span></div>
+                  <div class="summary-item"><span class="summary-label">扫描节点</span><span class="summary-value">{{ repairResult.scannedNodes }}</span></div>
+                  <div class="summary-item summary-item-wide"><span class="summary-label">修复结果</span><span class="summary-value">更新了 {{ repairResult.updatedNodes }} 个节点的 sort 值。</span></div>
+                </div>
+              </section>
+
+              <section class="panel panel-span-2">
+                <div class="panel-title">树查询预览</div>
+                <div v-if="queryTreeData.length > 0" class="result-tree-panel">
+                  <div class="query-tree-header">
+                    <span class="panel-title query-tree-title">{{ queryTreeTitle }}</span>
+                    <span class="muted-tip">{{ queryTreeSummary }}</span>
+                  </div>
+                  <el-tree :data="queryTreeData" :props="treeProps" node-key="id" default-expand-all :expand-on-click-node="false">
+                    <template #default="{ data }">
+                      <span class="custom-tree-node">
+                        <span class="node-label">
+                          <el-icon v-if="!isLeaf(data)"><folder></folder></el-icon>
+                          <el-icon v-else><document></document></el-icon>
+                          <span class="node-name">{{ data.name }}</span>
+                          <span class="node-id">#{{ data.id }}</span>
+                          <span v-if="getBindingCount(data) > 0" class="binding-count-badge">已绑 {{ getBindingCount(data) }}</span>
+                        </span>
+                      </span>
+                    </template>
+                  </el-tree>
+                </div>
+                <el-empty v-else description="这里会展示业务局部树或节点子树的查询结果。"></el-empty>
+              </section>
             </div>
+          </el-tab-pane>
 
-            <div class="content-area">
-                <el-tabs v-model="activeTab" class="tabs-container">
-                    <el-tab-pane label="当前节点" name="node">
-                        <div class="panel">
-                            <div class="panel-title">节点概览</div>
-                            <div v-if="selectedNode" class="summary-grid">
-                                <div class="summary-item">
-                                    <span class="summary-label">节点名称</span>
-                                    <span class="summary-value">{{ selectedNode.name }}</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">节点 ID</span>
-                                    <span class="summary-value">{{ selectedNode.id }}</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">父节点</span>
-                                    <span class="summary-value">{{ selectedNode.parentId || 0 }}</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">排序</span>
-                                    <span class="summary-value">{{ selectedNode.sort ?? '-' }}</span>
-                                </div>
-                                <div class="summary-item summary-item-wide">
-                                    <span class="summary-label">节点路径</span>
-                                    <span class="summary-value">{{ selectedNode.path || '-' }}</span>
-                                </div>
-                                <div class="summary-item summary-item-wide">
-                                    <span class="summary-label">树节点扩展摘要</span>
-                                    <div v-if="getBindingCount(selectedNode) > 0" class="binding-summary">
-                                        <div class="binding-summary-tags">
-                                            <span class="binding-count-badge">已绑 {{ getBindingCount(selectedNode) }}</span>
-                                            <span v-for="bizType in getBindingTypes(selectedNode)" :key="bizType" class="binding-type-chip">{{ bizType }}</span>
-                                        </div>
-                                        <span class="summary-value binding-summary-text">{{ getBindingPreview(selectedNode, 3) }}</span>
-                                    </div>
-                                    <span v-else class="summary-value">当前节点暂无直接业务绑定摘要</span>
-                                </div>
-                            </div>
-                            <el-empty v-else description="先从左侧选择一个节点，再继续操作"></el-empty>
-                        </div>
+          <el-tab-pane label="业务示例" name="business">
+            <div class="panel-grid">
+              <section class="panel panel-span-2">
+                <div class="panel-title">创建合同目录</div>
+                <p class="business-desc">这个示例会先创建合同目录，再批量创建交付物叶子节点，并把交付物业务对象逐个绑定到这些叶子节点上。</p>
+                <div class="contract-form">
+                  <el-input v-model="contractForm.contractId" placeholder="合同 ID"></el-input>
+                  <el-input v-model="contractForm.contractName" placeholder="合同名称"></el-input>
+                </div>
+                <div class="delivery-items">
+                  <div class="panel-title sub-title">交付物列表</div>
+                  <div v-for="(item, index) in contractForm.items" :key="index" class="delivery-item">
+                    <el-input v-model="item.deliveryId" class="w-160" placeholder="交付物 ID"></el-input>
+                    <el-input v-model="item.deliveryType" class="w-flex" placeholder="交付物名称"></el-input>
+                    <el-button type="danger" link @click="removeDeliveryItem(index)">删除</el-button>
+                  </div>
+                  <el-button type="primary" link @click="addDeliveryItem">+ 添加交付物</el-button>
+                </div>
+                <div class="business-actions">
+                  <el-button type="primary" @click="createContractCatalog">创建合同目录</el-button>
+                  <span v-if="contractNodeId" class="contract-id-inline">合同节点 ID：<el-tag type="success">{{ contractNodeId }}</el-tag></span>
+                </div>
+              </section>
 
-                        <div class="panel">
-                            <div class="panel-title">新建节点</div>
-                            <div class="form-row">
-                                <el-input v-model="addForm.parentId" class="w-150" placeholder="父节点 ID，留空表示根节点"></el-input>
-                                <el-input v-model="addForm.name" placeholder="新节点名称"></el-input>
-                                <el-button type="primary" @click="addNode">新增单个节点</el-button>
-                            </div>
-                            <div class="form-row">
-                                <el-input v-model="batchAddForm.parentId" class="w-150" placeholder="父节点 ID"></el-input>
-                                <el-input v-model="batchAddForm.names" class="w-300" placeholder="批量节点名称，使用逗号分隔"></el-input>
-                                <el-button type="primary" @click="batchAddNodes">批量新增子节点</el-button>
-                            </div>
-                            <p class="muted-tip">选中左侧节点后，父节点 ID 会自动同步到新增表单。</p>
-                        </div>
-
-                        <div class="panel">
-                            <div class="panel-title">编辑当前节点</div>
-                            <div class="form-row">
-                                <el-input v-model="updateForm.nodeId" class="w-120" placeholder="节点 ID" disabled></el-input>
-                                <el-input v-model="updateForm.name" placeholder="节点名称"></el-input>
-                                <el-input v-model="updateForm.code" placeholder="节点编码"></el-input>
-                                <el-input v-model="updateForm.sort" class="w-120" placeholder="排序索引"></el-input>
-                                <el-button type="primary" @click="updateSelectedNode" :disabled="!selectedNode">保存当前节点</el-button>
-                                <el-button type="danger" plain @click="handleDelete(selectedNode)" :disabled="!selectedNode">删除当前节点</el-button>
-                            </div>
-                            <p class="muted-tip">节点移动请直接使用左侧树的拖拽；这里主要处理名称、编码和排序调整。</p>
-                        </div>
-
-                        <div class="panel">
-                            <div class="panel-title">当前节点业务绑定</div>
-                            <div class="form-row">
-                                <el-select v-model="bindForm.bizType" class="w-150" placeholder="业务类型">
-                                    <el-option label="deliver" value="deliver"></el-option>
-                                    <el-option label="contract" value="contract"></el-option>
-                                    <el-option label="task" value="task"></el-option>
-                                    <el-option label="custom" value="custom"></el-option>
-                                </el-select>
-                                <el-input v-model="bindForm.bizId" placeholder="业务 ID" :disabled="!selectedNode || !selectedNode.bindable"></el-input>
-                                <el-button type="primary" @click="bindBiz" :disabled="!selectedNode">绑定到当前节点</el-button>
-                            </div>
-                            <div class="form-row">
-                                <el-select v-model="bindingListBizType" class="w-150" placeholder="查看类型">
-                                    <el-option label="deliver" value="deliver"></el-option>
-                                    <el-option label="contract" value="contract"></el-option>
-                                    <el-option label="task" value="task"></el-option>
-                                    <el-option label="custom" value="custom"></el-option>
-                                </el-select>
-                                <el-button @click="loadDirectBindings()" :disabled="!selectedNode">刷新当前节点绑定</el-button>
-                            </div>
-                            <p class="muted-tip">这里展示的是当前节点的直接绑定，使用的是后端专门提供的节点绑定接口，不再混用整棵子树查询。</p>
-
-                            <div v-if="selectedNode" class="binding-list">
-                                <div v-if="directBindings.length > 0">
-                                    <div v-for="binding in directBindings" :key="binding.bizId + binding.bizType" class="binding-item">
-                                        <span class="biz-info">
-                                            业务 ID: {{ binding.bizId }}
-                                            <span class="biz-type">{{ binding.bizType }}</span>
-                                        </span>
-                                        <el-button type="danger" link size="small" @click="quickUnbind(binding)">解除绑定</el-button>
-                                    </div>
-                                </div>
-                                <el-empty v-else description="当前节点暂无该类型绑定" :image-size="60"></el-empty>
-                            </div>
-                            <el-empty v-else description="请先选择节点"></el-empty>
-                        </div>
-                    </el-tab-pane>
-
-                    <el-tab-pane label="批量与查询" name="query">
-                        <div class="panel">
-                            <div class="panel-title">批量一对一绑定</div>
-                            <div class="form-row">
-                                <el-input v-model="batchBindForm.nodeIds" class="w-200" placeholder="节点 ID，逗号分隔"></el-input>
-                                <el-input v-model="batchBindForm.bizIds" class="w-300" placeholder="业务 ID，逗号分隔"></el-input>
-                                <el-select v-model="batchBindForm.bizType" class="w-150" placeholder="业务类型">
-                                    <el-option label="deliver" value="deliver"></el-option>
-                                    <el-option label="contract" value="contract"></el-option>
-                                    <el-option label="task" value="task"></el-option>
-                                </el-select>
-                                <el-button type="primary" @click="batchBind">执行批量绑定</el-button>
-                            </div>
-                            <p class="muted-tip">该接口适合批量创建叶子节点后，再把多个业务对象按顺序一一绑定到对应节点。</p>
-                        </div>
-
-                        <div class="panel">
-                            <div class="panel-title">基础查询</div>
-
-                            <div class="query-block">
-                                <div class="query-block-title">按业务对象查询路径</div>
-                                <div class="form-row">
-                                    <el-input v-model="queryBizPathForm.bizId" placeholder="业务 ID"></el-input>
-                                    <el-select v-model="queryBizPathForm.bizType" class="w-150" placeholder="业务类型">
-                                        <el-option label="deliver" value="deliver"></el-option>
-                                        <el-option label="contract" value="contract"></el-option>
-                                        <el-option label="task" value="task"></el-option>
-                                    </el-select>
-                                    <el-button type="primary" @click="queryBizPath">查询路径</el-button>
-                                </div>
-                                <div v-if="bizPathResult.length > 0" class="result-block">
-                                    <el-tag v-for="(node, index) in bizPathResult" :key="node.id" class="inline-tag">
-                                        {{ node.name }}<span v-if="index < bizPathResult.length - 1"> → </span>
-                                    </el-tag>
-                                </div>
-                            </div>
-
-                            <div class="query-block">
-                                <div class="query-block-title">按业务对象查询绑定节点</div>
-                                <div class="form-row">
-                                    <el-input v-model="queryBizNodesForm.bizId" placeholder="业务 ID"></el-input>
-                                    <el-select v-model="queryBizNodesForm.bizType" class="w-150" placeholder="业务类型">
-                                        <el-option label="deliver" value="deliver"></el-option>
-                                        <el-option label="contract" value="contract"></el-option>
-                                        <el-option label="task" value="task"></el-option>
-                                    </el-select>
-                                    <el-button type="primary" @click="queryBizNodes">查询绑定节点</el-button>
-                                </div>
-                                <div v-if="bizNodesResult.length > 0" class="result-block">
-                                    <el-tag v-for="id in bizNodesResult" :key="id" class="inline-tag">节点 ID: {{ id }}</el-tag>
-                                </div>
-                            </div>
-
-                            <div class="query-block">
-                                <div class="query-block-title">查询节点子树下的业务 ID</div>
-                                <div class="form-row">
-                                    <el-input v-model="queryNodeBizForm.nodeId" class="w-150" placeholder="节点 ID，留空则使用当前选中节点"></el-input>
-                                    <el-select v-model="queryNodeBizForm.bizType" class="w-150" placeholder="业务类型">
-                                        <el-option label="deliver" value="deliver"></el-option>
-                                        <el-option label="contract" value="contract"></el-option>
-                                        <el-option label="task" value="task"></el-option>
-                                    </el-select>
-                                    <el-button type="primary" @click="queryNodeBiz">查询子树业务</el-button>
-                                </div>
-                                <div v-if="nodeBizResult.length > 0" class="result-block">
-                                    <el-tag v-for="id in nodeBizResult" :key="id" class="inline-tag">{{ id }}</el-tag>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="panel">
-                            <div class="panel-title">树查询预览</div>
-                            <div class="form-row">
-                                <el-input v-model="queryBizTreeForm.bizId" placeholder="业务 ID"></el-input>
-                                <el-select v-model="queryBizTreeForm.bizType" class="w-150" placeholder="业务类型">
-                                    <el-option label="deliver" value="deliver"></el-option>
-                                    <el-option label="contract" value="contract"></el-option>
-                                    <el-option label="task" value="task"></el-option>
-                                </el-select>
-                                <el-button type="primary" @click="queryBizTree">查询业务局部树</el-button>
-                            </div>
-                            <div class="form-row">
-                                <el-input v-model="querySubtreeForm.nodeId" class="w-150" placeholder="节点 ID，留空则使用当前选中节点"></el-input>
-                                <el-button type="primary" @click="querySubtree">查询节点子树</el-button>
-                            </div>
-
-                            <div v-if="queryTreeData.length > 0" class="result-tree-panel">
-                                <div class="query-tree-header">
-                                    <span class="panel-title query-tree-title">{{ queryTreeTitle }}</span>
-                                    <span class="muted-tip">{{ queryTreeSummary }}</span>
-                                </div>
-                                <el-tree
-                                        :data="queryTreeData"
-                                        :props="treeProps"
-                                        node-key="id"
-                                        default-expand-all
-                                        :expand-on-click-node="false">
-                                    <template #default="{ data }">
-                                        <span class="custom-tree-node">
-                                            <span class="node-label">
-                                                <el-icon v-if="!isLeaf(data)"><folder></folder></el-icon>
-                                                <el-icon v-else><document></document></el-icon>
-                                                <span>{{ data.name }}</span>
-                                                <span class="node-id">#{{ data.id }}</span>
-                                                <span v-if="getBindingCount(data) > 0" class="binding-count-badge">已绑 {{ getBindingCount(data) }}</span>
-                                                <span v-if="getBindingPreview(data)" class="binding-preview">{{ getBindingPreview(data) }}</span>
-                                            </span>
-                                        </span>
-                                    </template>
-                                </el-tree>
-                            </div>
-                            <el-empty v-else description="这里会展示业务局部树或节点子树的查询结果"></el-empty>
-                        </div>
-                    </el-tab-pane>
-
-                    <el-tab-pane label="业务示例" name="business">
-                        <div class="panel">
-                            <div class="panel-title">创建合同目录</div>
-                            <p class="business-desc">该示例会先创建合同目录，再批量创建交付物叶子节点，并把交付物业务对象逐个绑定到叶子节点上。</p>
-                            <div class="contract-form">
-                                <el-input v-model="contractForm.contractId" placeholder="合同 ID"></el-input>
-                                <el-input v-model="contractForm.contractName" placeholder="合同名称"></el-input>
-                            </div>
-
-                            <div class="delivery-items">
-                                <div class="panel-title sub-title">交付物列表</div>
-                                <div v-for="(item, index) in contractForm.items" :key="index" class="delivery-item">
-                                    <el-input v-model="item.deliveryId" class="w-150" placeholder="交付物 ID"></el-input>
-                                    <el-input v-model="item.deliveryType" class="w-150" placeholder="交付物名称"></el-input>
-                                    <el-button type="danger" link @click="removeDeliveryItem(index)">删除</el-button>
-                                </div>
-                                <el-button type="primary" link @click="addDeliveryItem">+ 添加交付物</el-button>
-                            </div>
-
-                            <div class="business-actions">
-                                <el-button type="primary" @click="createContractCatalog">创建合同目录</el-button>
-                                <span v-if="contractNodeId" class="contract-id-inline">
-                                    合同节点 ID:
-                                    <el-tag type="success">{{ contractNodeId }}</el-tag>
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="panel">
-                            <div class="panel-title">挂载合同到项目目录</div>
-                            <div class="form-row">
-                                <el-input v-model="attachForm.projectNodeId" class="w-150" placeholder="项目节点 ID"></el-input>
-                                <el-input v-model="attachForm.contractNodeId" class="w-150" placeholder="合同节点 ID"></el-input>
-                                <el-button @click="useSelectedNodeAsProjectTarget" :disabled="!selectedNode">使用当前节点作为项目目录</el-button>
-                                <el-button type="primary" @click="attachContractToProject">执行挂载</el-button>
-                            </div>
-                            <p class="muted-tip">推荐先在左侧创建项目目录，再把刚刚创建的合同目录挂载到项目节点下。</p>
-                        </div>
-                    </el-tab-pane>
-
-                    <el-tab-pane label="API 日志" name="log">
-                        <div class="panel">
-                            <div class="panel-title panel-title-inline">
-                                <span>调试日志</span>
-                                <div class="panel-title-actions">
-                                    <el-tag type="info" size="small">基址 {{ apiBase }}</el-tag>
-                                    <el-button type="primary" link size="small" @click="clearApiLogs">清空</el-button>
-                                </div>
-                            </div>
-                            <p class="muted-tip">这里会记录 sample 前端发出的请求参数、响应摘要和耗时；后端控制台会同步打印 <code>/catalog</code>、<code>/contract</code>、<code>/project</code> 的请求日志。</p>
-                            <div class="api-log">
-                                <div v-if="apiLogs.length === 0" class="empty-log">暂无请求记录</div>
-                                <details v-for="(log, index) in apiLogs" :key="log.id || index" class="log-item" :open="index === 0">
-                                    <summary class="log-summary">
-                                        <span class="method" :class="log.method.toLowerCase()">{{ log.method }}</span>
-                                        <span class="url">{{ log.url }}</span>
-                                        <span class="status" :class="log.success ? 'success' : 'error'">
-                                            {{ getApiLogStatusText(log) }} {{ log.status }}
-                                        </span>
-                                        <span class="log-cost">{{ log.durationMs }} ms</span>
-                                        <span class="log-time">{{ log.time }}</span>
-                                    </summary>
-                                    <div class="log-detail-grid">
-                                        <div class="log-detail-card">
-                                            <div class="log-detail-title">请求信息</div>
-                                            <div class="log-line">
-                                                <span class="log-label">完整地址</span>
-                                                <code>{{ log.fullUrl }}</code>
-                                            </div>
-                                            <div v-if="hasLogText(log.requestParamsText)" class="log-line">
-                                                <span class="log-label">Query</span>
-                                                <pre>{{ log.requestParamsText }}</pre>
-                                            </div>
-                                            <div v-if="hasLogText(log.requestBodyText)" class="log-line">
-                                                <span class="log-label">Body</span>
-                                                <pre>{{ log.requestBodyText }}</pre>
-                                            </div>
-                                        </div>
-                                        <div class="log-detail-card">
-                                            <div class="log-detail-title">{{ log.success ? '响应信息' : '错误信息' }}</div>
-                                            <div class="log-line">
-                                                <span class="log-label">状态</span>
-                                                <span>{{ log.status }} {{ log.statusText || '' }}</span>
-                                            </div>
-                                            <div v-if="hasLogText(log.errorMessage)" class="log-line">
-                                                <span class="log-label">异常</span>
-                                                <pre>{{ log.errorMessage }}</pre>
-                                            </div>
-                                            <div v-if="hasLogText(log.responseBodyText)" class="log-line">
-                                                <span class="log-label">{{ log.success ? '响应体' : '错误响应' }}</span>
-                                                <pre>{{ log.responseBodyText }}</pre>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </details>
-                            </div>
-                        </div>
-                    </el-tab-pane>
-                </el-tabs>
+              <section class="panel panel-span-2">
+                <div class="panel-title">挂载合同到项目目录</div>
+                <div class="form-row">
+                  <el-input v-model="attachForm.projectNodeId" class="w-160" placeholder="项目节点 ID"></el-input>
+                  <el-input v-model="attachForm.contractNodeId" class="w-160" placeholder="合同节点 ID"></el-input>
+                  <el-button @click="useSelectedNodeAsProjectTarget" :disabled="!selectedNode">使用当前节点作为项目目录</el-button>
+                  <el-button type="primary" @click="attachContractToProject">执行挂载</el-button>
+                </div>
+                <p class="muted-tip">推荐先在左侧创建项目目录，再把刚刚创建好的合同目录挂载到该项目节点下。</p>
+              </section>
             </div>
-        </main>
-    </div>
+          </el-tab-pane>
+
+          <el-tab-pane label="API 日志" name="log">
+            <section class="panel panel-fill">
+              <div class="panel-title panel-title-inline">
+                <span>调试日志</span>
+                <div class="panel-title-actions">
+                  <el-tag type="info" size="small">基址 {{ apiBase }}</el-tag>
+                  <el-button type="primary" link size="small" @click="clearApiLogs">清空</el-button>
+                </div>
+              </div>
+              <p class="muted-tip">这里会记录 sample 前端发出的请求参数、响应摘要和耗时；后端终端也会同步输出请求耗时、参数和 SQL。</p>
+              <div class="api-log">
+                <div v-if="apiLogs.length === 0" class="empty-log">暂无请求记录</div>
+                <details v-for="(log, index) in apiLogs" :key="log.id || index" class="log-item" :open="index === 0">
+                  <summary class="log-summary">
+                    <span class="method" :class="log.method.toLowerCase()">{{ log.method }}</span>
+                    <span class="url">{{ log.url }}</span>
+                    <span class="status" :class="log.success ? 'success' : 'error'">{{ getApiLogStatusText(log) }} {{ log.status }}</span>
+                    <span class="log-cost">{{ log.durationMs }} ms</span>
+                    <span class="log-time">{{ log.time }}</span>
+                  </summary>
+                  <div class="log-detail-grid">
+                    <div class="log-detail-card">
+                      <div class="log-detail-title">请求信息</div>
+                      <div class="log-line"><span class="log-label">完整地址</span><code>{{ log.fullUrl }}</code></div>
+                      <div v-if="hasLogText(log.requestParamsText)" class="log-line"><span class="log-label">Query</span><pre>{{ log.requestParamsText }}</pre></div>
+                      <div v-if="hasLogText(log.requestBodyText)" class="log-line"><span class="log-label">Body</span><pre>{{ log.requestBodyText }}</pre></div>
+                    </div>
+                    <div class="log-detail-card">
+                      <div class="log-detail-title">{{ log.success ? '响应信息' : '错误信息' }}</div>
+                      <div class="log-line"><span class="log-label">状态</span><span>{{ log.status }} {{ log.statusText || '' }}</span></div>
+                      <div v-if="hasLogText(log.errorMessage)" class="log-line"><span class="log-label">异常</span><pre>{{ log.errorMessage }}</pre></div>
+                      <div v-if="hasLogText(log.responseBodyText)" class="log-line"><span class="log-label">{{ log.success ? '响应体' : '错误响应' }}</span><pre>{{ log.responseBodyText }}</pre></div>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </section>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+    </main>
+  </div>
 </div>
 
 <script type="module" src="./app.js"></script>

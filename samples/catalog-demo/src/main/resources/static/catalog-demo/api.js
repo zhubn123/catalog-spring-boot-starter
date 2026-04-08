@@ -56,7 +56,6 @@ function buildLogEntry(method, baseUrl, url, config, status, statusText, duratio
 }
 
 export function createApi({ baseUrl, logApi }) {
-    // 统一记录请求日志，方便在 sample 页里直接看到入参、出参和耗时。
     const request = async (method, url, config = {}) => {
         const startedAt = Date.now();
         const normalizedMethod = method.toUpperCase();
@@ -127,7 +126,6 @@ export function extractErrorMessage(error, fallback = "请求失败") {
 }
 
 export function unwrapResultData(result) {
-    // 兼容 sample 中少量包装响应和 catalog 原生响应并存的情况。
     if (result && typeof result === "object" && Object.prototype.hasOwnProperty.call(result, "data")) {
         return result.data;
     }

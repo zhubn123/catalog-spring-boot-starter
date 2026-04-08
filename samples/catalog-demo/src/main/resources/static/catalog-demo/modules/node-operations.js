@@ -1,5 +1,12 @@
 import { extractErrorMessage } from "../api.js";
 
+function splitTextValues(text) {
+    return text
+        .split(/[\n,，]+/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+}
+
 export function createNodeActions(context) {
     const {
         api,
@@ -8,7 +15,6 @@ export function createNodeActions(context) {
         activeTab,
         selectedNode,
         addForm,
-        batchAddForm,
         updateForm,
         loadTree,
         clearSelection,
@@ -16,48 +22,32 @@ export function createNodeActions(context) {
     } = context;
 
     const addNode = async () => {
-        const name = addForm.name.trim();
-        if (!name) {
+        const names = splitTextValues(addForm.name || "");
+        if (names.length === 0) {
             ElMessage.warning("请先填写节点名称");
             return;
         }
 
         try {
-            const payload = { name };
-            if (addForm.parentId) {
-                payload.parentId = Number(addForm.parentId);
+            if (names.length === 1) {
+                const payload = { name: names[0] };
+                if (addForm.parentId) {
+                    payload.parentId = Number(addForm.parentId);
+                }
+                await api.postJson("/catalog/node", payload);
+                ElMessage.success("节点创建成功");
+            } else {
+                const payload = { names };
+                if (addForm.parentId) {
+                    payload.parentId = Number(addForm.parentId);
+                }
+                await api.postJson("/catalog/node/batch", payload);
+                ElMessage.success(`已批量创建 ${names.length} 个节点`);
             }
-            await api.postJson("/catalog/node", payload);
-            ElMessage.success("节点创建成功");
             addForm.name = "";
             await loadTree();
         } catch (error) {
             ElMessage.error("节点创建失败: " + extractErrorMessage(error));
-        }
-    };
-
-    const batchAddNodes = async () => {
-        const names = batchAddForm.names
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean);
-
-        if (names.length === 0) {
-            ElMessage.warning("请至少输入一个有效节点名称");
-            return;
-        }
-
-        try {
-            const payload = { names };
-            if (batchAddForm.parentId) {
-                payload.parentId = Number(batchAddForm.parentId);
-            }
-            await api.postJson("/catalog/node/batch", payload);
-            ElMessage.success(`已批量创建 ${names.length} 个节点`);
-            batchAddForm.names = "";
-            await loadTree();
-        } catch (error) {
-            ElMessage.error("批量创建失败: " + extractErrorMessage(error));
         }
     };
 
@@ -99,15 +89,8 @@ export function createNodeActions(context) {
         }
 
         try {
-            await ElMessageBox.confirm(
-                `确定删除节点“${node.name}”及其子树吗？`,
-                "删除确认",
-                { type: "warning" }
-            );
-            await api.postJson("/catalog/node/delete", {
-                nodeId: node.id,
-                recursive: true
-            });
+            await ElMessageBox.confirm(`确定删除节点“${node.name}”及其子树吗？`, "删除确认", { type: "warning" });
+            await api.postJson("/catalog/node/delete", { nodeId: node.id, recursive: true });
             ElMessage.success("节点删除成功");
             if (selectedNode.value && String(selectedNode.value.id) === String(node.id)) {
                 clearSelection();
@@ -125,15 +108,12 @@ export function createNodeActions(context) {
     const showAddRootDialog = () => {
         activeTab.value = "node";
         addForm.parentId = "";
-        batchAddForm.parentId = "";
     };
 
     const showAddChildDialog = (node) => {
-        // 左侧点“新增子节点”后，右侧表单直接切到当前节点上下文继续编辑。
         syncFormsFromSelectedNode(node);
         activeTab.value = "node";
         addForm.parentId = String(node.id);
-        batchAddForm.parentId = String(node.id);
     };
 
     const showEditDialog = (node) => {
@@ -143,7 +123,6 @@ export function createNodeActions(context) {
 
     return {
         addNode,
-        batchAddNodes,
         updateSelectedNode,
         handleDelete,
         showAddRootDialog,
