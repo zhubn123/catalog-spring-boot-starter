@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS catalog_node (
     code VARCHAR(50) COMMENT '节点编码',
     path VARCHAR(500) COMMENT '从根到当前节点的路径',
     level INT COMMENT '节点层级，从1开始',
-    sort INT COMMENT '同级节点排序号，从1开始',
+    sort INT COMMENT '同级节点排序值，默认按间隔分配',
     INDEX idx_parent_sort_id (parent_id, sort, id),
     INDEX idx_path (path)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='目录节点表';

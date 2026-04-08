@@ -126,34 +126,6 @@
         WHERE path LIKE CONCAT(#{oldPath}, '/%')
     </update>
 
-    <update id="decrementSortAfter">
-        UPDATE catalog_node
-        SET sort = sort - 1
-        WHERE parent_id = #{parentId} AND sort > #{afterSort}
-    </update>
-
-    <update id="incrementSortFrom">
-        UPDATE catalog_node
-        SET sort = sort + 1
-        WHERE parent_id = #{parentId} AND sort >= #{fromSort}
-    </update>
-
-    <update id="decrementSortRange">
-        UPDATE catalog_node
-        SET sort = sort - 1
-        WHERE parent_id = #{parentId}
-          AND sort BETWEEN #{fromSort} AND #{toSort}
-          AND id != #{excludeId}
-    </update>
-
-    <update id="incrementSortRange">
-        UPDATE catalog_node
-        SET sort = sort + 1
-        WHERE parent_id = #{parentId}
-          AND sort BETWEEN #{fromSort} AND #{toSort}
-          AND id != #{excludeId}
-    </update>
-
     <delete id="deleteByIds">
         DELETE FROM catalog_node WHERE id IN
         <foreach collection="list" item="id" open="(" separator="," close=")">

@@ -58,7 +58,7 @@ class CatalogServiceImplTest {
         assertThat(nodeId).isEqualTo(100L);
         assertThat(inserted.getParentId()).isEqualTo(0L);
         assertThat(inserted.getLevel()).isEqualTo(1);
-        assertThat(inserted.getSort()).isEqualTo(1);
+        assertThat(inserted.getSort()).isEqualTo(1024);
         assertThat(inserted.getName()).isEqualTo("Root");
         verify(nodeMapper).updatePath(100L, "/100");
         verify(nodeMapper, never()).selectByParentId(anyLong());
@@ -78,7 +78,7 @@ class CatalogServiceImplTest {
         ArgumentCaptor<CatalogNode> nodeCaptor = ArgumentCaptor.forClass(CatalogNode.class);
         verify(nodeMapper).insert(nodeCaptor.capture());
         assertThat(nodeId).isEqualTo(10_001L);
-        assertThat(nodeCaptor.getValue().getSort()).isEqualTo(10_001);
+        assertThat(nodeCaptor.getValue().getSort()).isEqualTo(11_024);
         verify(nodeMapper, never()).selectByParentId(anyLong());
     }
 
@@ -100,7 +100,7 @@ class CatalogServiceImplTest {
         ArgumentCaptor<List<CatalogNode>> nodesCaptor = ArgumentCaptor.forClass(List.class);
         verify(nodeMapper).batchInsert(nodesCaptor.capture());
         assertThat(nodeIds).containsExactly(10_001L, 10_002L);
-        assertThat(nodesCaptor.getValue()).extracting(CatalogNode::getSort).containsExactly(10_001, 10_002);
+        assertThat(nodesCaptor.getValue()).extracting(CatalogNode::getSort).containsExactly(11_024, 12_048);
         verify(nodeMapper, never()).selectByParentId(anyLong());
     }
 
@@ -275,18 +275,34 @@ class CatalogServiceImplTest {
     @Test
     void moveNodeReordersSiblingsWithinSameParent() {
         CatalogNode parent = node(1L, 0L, "Root", "/1", 1, 1);
-        CatalogNode second = node(11L, 1L, "Second", "/1/11", 2, 2);
+        CatalogNode first = node(10L, 1L, "First", "/1/10", 2, 1024);
+        CatalogNode second = node(11L, 1L, "Second", "/1/11", 2, 2048);
+        CatalogNode third = node(12L, 1L, "Third", "/1/12", 2, 3072);
         when(nodeMapper.selectById(11L)).thenReturn(second);
         when(nodeMapper.selectById(1L)).thenReturn(parent);
-        when(nodeMapper.selectMaxSortByParent(1L)).thenReturn(3);
+        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(first, second, third));
 
         service.moveNode(11L, 1L, 0);
 
-        verify(nodeMapper).incrementSortRange(1L, 1, 1, 11L);
-        verify(nodeMapper).updateSort(11L, 1);
+        verify(nodeMapper).updateSort(11L, 512);
         verify(nodeMapper, never()).updateParentLevelPathSort(anyLong(), anyLong(), anyInt(), anyString(), anyInt());
         verify(nodeMapper, never()).moveSubtree(anyString(), anyString(), anyInt());
-        verify(nodeMapper, never()).selectByParentId(anyLong());
+    }
+
+    @Test
+    void moveNodeRebalancesSiblingsWhenNoGapExistsAtTargetPosition() {
+        CatalogNode movingNode = node(12L, 1L, "Third", "/1/12", 2, 3);
+        CatalogNode first = node(10L, 1L, "First", "/1/10", 2, 1);
+        CatalogNode second = node(11L, 1L, "Second", "/1/11", 2, 2);
+        when(nodeMapper.selectById(12L)).thenReturn(movingNode);
+        when(nodeMapper.selectById(1L)).thenReturn(node(1L, 0L, "Root", "/1", 1, 1));
+        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(first, second, movingNode));
+
+        service.moveNode(12L, 1L, 1);
+
+        verify(nodeMapper).updateSort(10L, 1024);
+        verify(nodeMapper).updateSort(11L, 2048);
+        verify(nodeMapper).updateSort(12L, 1536);
     }
 
     @Test
@@ -299,9 +315,7 @@ class CatalogServiceImplTest {
 
         service.moveNode(11L, 20L, null);
 
-        verify(nodeMapper).decrementSortAfter(1L, 2);
-        verify(nodeMapper).incrementSortFrom(20L, 1);
-        verify(nodeMapper).updateParentLevelPathSort(11L, 20L, 2, "/20/11", 1);
+        verify(nodeMapper).updateParentLevelPathSort(11L, 20L, 2, "/20/11", 1024);
         verify(nodeMapper).moveSubtree("/1/11", "/20/11", 0);
         verify(nodeMapper, never()).selectByParentId(anyLong());
     }
@@ -314,9 +328,7 @@ class CatalogServiceImplTest {
 
         service.moveNode(23L, 0L, null);
 
-        verify(nodeMapper).decrementSortAfter(21L, 2);
-        verify(nodeMapper).incrementSortFrom(0L, 17);
-        verify(nodeMapper).updateParentLevelPathSort(23L, 0L, 1, "/23", 17);
+        verify(nodeMapper).updateParentLevelPathSort(23L, 0L, 1, "/23", 1040);
         verify(nodeMapper).moveSubtree("/21/23", "/23", -1);
         verify(nodeMapper, never()).selectByParentId(anyLong());
     }

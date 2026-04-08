@@ -46,13 +46,5 @@ public interface CatalogNodeMapper {
 
     void moveSubtree(String oldPath, String newPath, int levelDelta);
 
-    void decrementSortAfter(Long parentId, int afterSort);
-
-    void incrementSortFrom(Long parentId, int fromSort);
-
-    void decrementSortRange(Long parentId, int fromSort, int toSort, Long excludeId);
-
-    void incrementSortRange(Long parentId, int fromSort, int toSort, Long excludeId);
-
     void deleteByIds(List<Long> ids);
 }
