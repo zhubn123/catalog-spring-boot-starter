@@ -17,3 +17,4 @@ target/
 **/nbproject
 /logs/
 /samples/catalog-demo/src/main/resources/application-local.yml
+/docs/local-notes/
