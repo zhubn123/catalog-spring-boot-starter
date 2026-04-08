@@ -11,7 +11,7 @@ CREATE TABLE catalog_node (
     sort INT
 );
 
-CREATE INDEX idx_catalog_node_parent ON catalog_node(parent_id);
+CREATE INDEX idx_catalog_node_parent_sort_id ON catalog_node(parent_id, sort, id);
 CREATE INDEX idx_catalog_node_path ON catalog_node(path);
 
 CREATE TABLE catalog_rel (

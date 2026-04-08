@@ -43,7 +43,6 @@ class CatalogServiceImplTest {
 
     @Test
     void addNodeCreatesRootNodeAndUpdatesPath() {
-        when(nodeMapper.selectByParentId(0L)).thenReturn(Collections.emptyList());
         when(nodeMapper.selectMaxSortByParent(0L)).thenReturn(null);
         doAnswer(invocation -> {
             CatalogNode node = invocation.getArgument(0);
@@ -62,6 +61,47 @@ class CatalogServiceImplTest {
         assertThat(inserted.getSort()).isEqualTo(1);
         assertThat(inserted.getName()).isEqualTo("Root");
         verify(nodeMapper).updatePath(100L, "/100");
+        verify(nodeMapper, never()).selectByParentId(anyLong());
+    }
+
+    @Test
+    void addNodeAppendsAfterRootMaxSortWithoutScanningAllRootSiblings() {
+        when(nodeMapper.selectMaxSortByParent(0L)).thenReturn(10_000);
+        doAnswer(invocation -> {
+            CatalogNode node = invocation.getArgument(0);
+            node.setId(10_001L);
+            return null;
+        }).when(nodeMapper).insert(any(CatalogNode.class));
+
+        Long nodeId = service.addNode(0L, "Root-10001");
+
+        ArgumentCaptor<CatalogNode> nodeCaptor = ArgumentCaptor.forClass(CatalogNode.class);
+        verify(nodeMapper).insert(nodeCaptor.capture());
+        assertThat(nodeId).isEqualTo(10_001L);
+        assertThat(nodeCaptor.getValue().getSort()).isEqualTo(10_001);
+        verify(nodeMapper, never()).selectByParentId(anyLong());
+    }
+
+    @Test
+    void batchAddNodeAppendsSequentialSortsWithoutScanningAllRootSiblings() {
+        when(nodeMapper.selectMaxSortByParent(0L)).thenReturn(10_000);
+        doAnswer(invocation -> {
+            List<CatalogNode> nodes = invocation.getArgument(0);
+            long id = 10_001L;
+            for (CatalogNode node : nodes) {
+                node.setId(id++);
+            }
+            return null;
+        }).when(nodeMapper).batchInsert(anyList());
+
+        List<Long> nodeIds = service.batchAddNode(0L, new String[]{"A", "B"});
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<CatalogNode>> nodesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(nodeMapper).batchInsert(nodesCaptor.capture());
+        assertThat(nodeIds).containsExactly(10_001L, 10_002L);
+        assertThat(nodesCaptor.getValue()).extracting(CatalogNode::getSort).containsExactly(10_001, 10_002);
+        verify(nodeMapper, never()).selectByParentId(anyLong());
     }
 
     @Test
@@ -235,12 +275,9 @@ class CatalogServiceImplTest {
     @Test
     void moveNodeReordersSiblingsWithinSameParent() {
         CatalogNode parent = node(1L, 0L, "Root", "/1", 1, 1);
-        CatalogNode first = node(10L, 1L, "First", "/1/10", 2, 1);
         CatalogNode second = node(11L, 1L, "Second", "/1/11", 2, 2);
-        CatalogNode third = node(12L, 1L, "Third", "/1/12", 2, 3);
-        when(nodeMapper.selectById(11L)).thenReturn(second, second);
+        when(nodeMapper.selectById(11L)).thenReturn(second);
         when(nodeMapper.selectById(1L)).thenReturn(parent);
-        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(first, second, third));
         when(nodeMapper.selectMaxSortByParent(1L)).thenReturn(3);
 
         service.moveNode(11L, 1L, 0);
@@ -249,17 +286,15 @@ class CatalogServiceImplTest {
         verify(nodeMapper).updateSort(11L, 1);
         verify(nodeMapper, never()).updateParentLevelPathSort(anyLong(), anyLong(), anyInt(), anyString(), anyInt());
         verify(nodeMapper, never()).moveSubtree(anyString(), anyString(), anyInt());
+        verify(nodeMapper, never()).selectByParentId(anyLong());
     }
 
     @Test
     void moveNodeUpdatesParentAndSubtreeWhenMovingAcrossParents() {
         CatalogNode movingNode = node(11L, 1L, "Second", "/1/11", 2, 2);
         CatalogNode newParent = node(20L, 0L, "Archive", "/20", 1, 1);
-        CatalogNode sibling = node(10L, 1L, "First", "/1/10", 2, 1);
-        when(nodeMapper.selectById(11L)).thenReturn(movingNode, movingNode);
+        when(nodeMapper.selectById(11L)).thenReturn(movingNode);
         when(nodeMapper.selectById(20L)).thenReturn(newParent);
-        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(sibling, movingNode));
-        when(nodeMapper.selectByParentId(20L)).thenReturn(Collections.emptyList());
         when(nodeMapper.selectMaxSortByParent(20L)).thenReturn(null);
 
         service.moveNode(11L, 20L, null);
@@ -268,6 +303,22 @@ class CatalogServiceImplTest {
         verify(nodeMapper).incrementSortFrom(20L, 1);
         verify(nodeMapper).updateParentLevelPathSort(11L, 20L, 2, "/20/11", 1);
         verify(nodeMapper).moveSubtree("/1/11", "/20/11", 0);
+        verify(nodeMapper, never()).selectByParentId(anyLong());
+    }
+
+    @Test
+    void moveNodeToRootAppendsAfterRootMaxSortWithoutScanningRootSiblings() {
+        CatalogNode movingNode = node(23L, 21L, "测试", "/21/23", 2, 2);
+        when(nodeMapper.selectById(23L)).thenReturn(movingNode);
+        when(nodeMapper.selectMaxSortByParent(0L)).thenReturn(16);
+
+        service.moveNode(23L, 0L, null);
+
+        verify(nodeMapper).decrementSortAfter(21L, 2);
+        verify(nodeMapper).incrementSortFrom(0L, 17);
+        verify(nodeMapper).updateParentLevelPathSort(23L, 0L, 1, "/23", 17);
+        verify(nodeMapper).moveSubtree("/21/23", "/23", -1);
+        verify(nodeMapper, never()).selectByParentId(anyLong());
     }
 
     @Test
@@ -373,7 +424,6 @@ class CatalogServiceImplTest {
     void deleteNodeRejectsNonRecursiveDeleteWhenBindingsExist() {
         CatalogNode node = node(10L, 0L, "Leaf", "/10", 1, 1);
         when(nodeMapper.selectById(10L)).thenReturn(node);
-        when(nodeMapper.selectByParentId(0L)).thenReturn(List.of(node));
         when(nodeMapper.selectByPathPrefix("/10")).thenReturn(List.of(node));
         when(relMapper.countByNodeIds(List.of(10L))).thenReturn(1);
 
@@ -384,6 +434,7 @@ class CatalogServiceImplTest {
 
         verify(relMapper, never()).deleteByNodeIds(anyList());
         verify(nodeMapper, never()).deleteByIds(anyList());
+        verify(nodeMapper, never()).selectByParentId(anyLong());
     }
 
     private CatalogNode node(Long id, Long parentId, String name, String path, Integer level, Integer sort) {

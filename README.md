@@ -5,7 +5,7 @@
 ## ✨ 特性
 
 - 🌳 **树形结构管理** - 支持无限层级的目录树
-- 🔗 **业务对象绑定** - 叶子节点可选的一对一业务绑定
+- 🔗 **业务对象绑定** - 叶子节点可选绑定业务对象，单个业务对象只绑定一个目录节点
 - 🎯 **拖拽排序** - 支持节点移动和排序
 - 🚀 **高性能查询** - 路径冗余设计，避免递归查询
 - 🔧 **开箱即用** - Spring Boot Starter 一键集成
@@ -34,7 +34,7 @@ CREATE TABLE catalog_node (
     path VARCHAR(500),
     level INT,
     sort INT,
-    INDEX idx_parent (parent_id),
+    INDEX idx_parent_sort_id (parent_id, sort, id),
     INDEX idx_path (path)
 );
 
@@ -52,6 +52,7 @@ CREATE TABLE catalog_rel (
 > 说明：
 > - 目录节点可以只作为容器，不必绑定业务对象
 > - 只有叶子节点允许绑定业务对象
+> - 单个叶子节点可以绑定多个业务对象
 > - 同一 `biz_type + biz_id` 最多绑定一个目录节点
 ### 3. 配置 sample 本地环境
 
@@ -103,7 +104,7 @@ Long contractId = catalogService.addNode(projectId, "合同A");
 Long deliveryId = catalogService.addNode(contractId, "交付物A");
 
 // 目录节点可以只做容器，不必绑定业务对象
-// 叶子节点可选绑定业务对象
+// 叶子节点可选绑定业务对象；单个叶子节点也可以聚合同类型的多个业务对象
 catalogService.bind(deliveryId, "DELIVER-001", "deliver");
 
 // 查询业务路径（单个业务对象最多绑定一个目录节点）
@@ -227,8 +228,9 @@ catalog-spring-boot-starter/
 
 - 目录节点可以只作为容器，不必绑定业务对象
 - 只有叶子节点（无子节点）才能绑定业务对象
+- 单个叶子节点可以绑定多个业务对象
 - 同一 `bizType + bizId` 最多绑定一个目录节点
-- 批量绑定推荐使用“多组一对一绑定”，而不是让一个业务对象绑定多个节点
+- 批量绑定推荐使用“多组一对一绑定”；不要让一个业务对象绑定多个节点
 
 ### 路径冗余设计
 

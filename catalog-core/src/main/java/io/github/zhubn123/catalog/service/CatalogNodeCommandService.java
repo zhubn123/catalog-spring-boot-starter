@@ -16,6 +16,10 @@ import java.util.Objects;
  * 负责目录节点命令侧逻辑。
  *
  * <p>包含新增、移动、更新、删除以及同级排序维护等写操作。</p>
+ *
+ * <p>默认假设目录节点的排序数据由当前服务持续维护为一致状态，
+ * 因此写入热路径不再主动扫描整组兄弟节点做排序归一化。
+ * 如需修复历史脏数据，应通过单独的治理入口处理，而不是让每次写操作都承担全量扫描成本。</p>
  */
 final class CatalogNodeCommandService {
 
@@ -37,8 +41,6 @@ final class CatalogNodeCommandService {
         }
 
         CatalogNode parent = getParentNode(normalizedParentId);
-        normalizeSiblingSorts(normalizedParentId);
-
         CatalogNode node = new CatalogNode();
         node.setParentId(normalizedParentId);
         node.setName(nodeName);
@@ -57,8 +59,6 @@ final class CatalogNodeCommandService {
 
         Long normalizedParentId = normalizeParentId(parentId);
         CatalogNode parent = getParentNode(normalizedParentId);
-        normalizeSiblingSorts(normalizedParentId);
-
         List<String> validNames = Arrays.stream(names)
                 .map(this::trimToNull)
                 .filter(Objects::nonNull)
@@ -111,12 +111,6 @@ final class CatalogNodeCommandService {
         Long oldParentId = normalizeParentId(node.getParentId());
         Long newParentId = normalizeParentId(parentId);
 
-        normalizeSiblingSorts(oldParentId);
-        if (!Objects.equals(oldParentId, newParentId)) {
-            normalizeSiblingSorts(newParentId);
-        }
-        node = getRequiredNode(nodeId);
-
         CatalogNode newParent = getParentNode(newParentId);
         validateMoveTarget(node, newParentId, newParent);
 
@@ -147,9 +141,6 @@ final class CatalogNodeCommandService {
     void deleteNode(Long nodeId, boolean recursive) {
         CatalogNode node = getRequiredNode(nodeId);
         Long parentId = normalizeParentId(node.getParentId());
-
-        normalizeSiblingSorts(parentId);
-        node = getRequiredNode(nodeId);
 
         List<CatalogNode> subtree = nodeMapper.selectByPathPrefix(node.getPath());
         List<Long> nodeIds = subtree.stream()
@@ -279,19 +270,5 @@ final class CatalogNodeCommandService {
 
     private int defaultLevel(Integer level) {
         return level == null || level <= 0 ? 1 : level;
-    }
-
-    private void normalizeSiblingSorts(Long parentId) {
-        List<CatalogNode> siblings = nodeMapper.selectByParentId(parentId);
-        int expectedSort = 1;
-        for (CatalogNode sibling : siblings) {
-            if (sibling == null) {
-                continue;
-            }
-            if (sibling.getSort() == null || sibling.getSort() != expectedSort) {
-                nodeMapper.updateSort(sibling.getId(), expectedSort);
-            }
-            expectedSort++;
-        }
     }
 }
