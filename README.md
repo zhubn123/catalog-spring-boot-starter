@@ -210,7 +210,7 @@ catalog:
   enabled: true              # 是否启用
   enable-rest-api: true      # 是否启用REST API
   sort:
-    strategy: gap            # 当前内置策略：gap
+    strategy: gap            # 当前内置策略：gap / contiguous
     gap-step: 1024           # gap 排序步长，适合中小规模同级节点场景
 ```
 
@@ -246,7 +246,14 @@ catalog-spring-boot-starter/
 - 调整位置时会优先复用相邻节点之间的空隙，只有空隙耗尽时才对局部兄弟节点做重排
 - 调用方应只依赖“按 `sort` 升序即可得到正确顺序”，不要依赖 `sort` 连续或从 `1` 开始
 - 如需修复历史脏数据或手工改库后的排序间隔，可显式调用 `/catalog/admin/repairSort` 或 `/catalog/admin/repairSort/all`
-- 当前默认策略是 `gap`，可通过 `catalog.sort.gap-step` 调整步长；如需特殊排序规则，可通过 Spring Bean 扩展自定义整数型排序策略
+- 当前内置策略包括：
+  - `gap`：默认策略，适合中小规模同级节点场景，可通过 `catalog.sort.gap-step` 调整步长
+  - `contiguous`：连续整数排序，适合更重视排序值可读性的场景，但中间插入、跨父节点迁移和删除后的写放大会更明显
+- 当前 `sort` 字段仍为 `INT`：
+  - `gap-step=1024` 时，单个父节点理论上大约可容纳 209 万次尾部追加后再触及整数上限
+  - 但如果持续在同一个局部空隙中间插入，远早于整数上限就会触发局部重排
+  - `contiguous` 理论上也受 `INT` 上限约束，但通常会先遇到热点父节点下的写放大问题
+- 如果业务需要更大的数值空间或非整数型排序键，可通过自定义 `CatalogSortStrategy` 配合调整存储字段类型来扩展
 
 ### 路径冗余设计
 

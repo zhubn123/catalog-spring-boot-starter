@@ -392,6 +392,80 @@ class CatalogServiceImplTest {
     }
 
     @Test
+    void contiguousStrategyReordersSameParentMoveAsDenseSequence() {
+        CatalogService customService = new CatalogServiceImpl(
+                nodeMapper,
+                relMapper,
+                List.of(),
+                new ContiguousCatalogSortStrategy()
+        );
+        CatalogNode parent = node(1L, 0L, "Root", "/1", 1, 1);
+        CatalogNode first = node(10L, 1L, "First", "/1/10", 2, 1);
+        CatalogNode second = node(11L, 1L, "Second", "/1/11", 2, 2);
+        CatalogNode third = node(12L, 1L, "Third", "/1/12", 2, 3);
+        when(nodeMapper.selectById(11L)).thenReturn(second);
+        when(nodeMapper.selectById(1L)).thenReturn(parent);
+        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(first, second, third));
+
+        customService.moveNode(11L, 1L, 0);
+
+        verify(nodeMapper).updateSort(11L, 1);
+        verify(nodeMapper).updateSort(10L, 2);
+    }
+
+    @Test
+    void contiguousStrategyCompactsOldParentWhenMovingAcrossParents() {
+        CatalogService customService = new CatalogServiceImpl(
+                nodeMapper,
+                relMapper,
+                List.of(),
+                new ContiguousCatalogSortStrategy()
+        );
+        CatalogNode movingNode = node(11L, 1L, "Second", "/1/11", 2, 2);
+        CatalogNode newParent = node(20L, 0L, "Archive", "/20", 1, 1);
+        when(nodeMapper.selectById(11L)).thenReturn(movingNode);
+        when(nodeMapper.selectById(20L)).thenReturn(newParent);
+        when(nodeMapper.selectByParentId(20L)).thenReturn(List.of(
+                node(30L, 20L, "Existing-A", "/20/30", 2, 1),
+                node(31L, 20L, "Existing-B", "/20/31", 2, 2)
+        ));
+        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(
+                node(10L, 1L, "First", "/1/10", 2, 1),
+                node(12L, 1L, "Third", "/1/12", 2, 3)
+        ));
+
+        customService.moveNode(11L, 20L, 1);
+
+        verify(nodeMapper).updateSort(31L, 3);
+        verify(nodeMapper).updateParentLevelPathSort(11L, 20L, 2, "/20/11", 2);
+        verify(nodeMapper).moveSubtree("/1/11", "/20/11", 0);
+        verify(nodeMapper).updateSort(12L, 2);
+    }
+
+    @Test
+    void contiguousStrategyCompactsOldParentAfterDelete() {
+        CatalogService customService = new CatalogServiceImpl(
+                nodeMapper,
+                relMapper,
+                List.of(),
+                new ContiguousCatalogSortStrategy()
+        );
+        CatalogNode node = node(11L, 1L, "Leaf", "/1/11", 2, 2);
+        when(nodeMapper.selectById(11L)).thenReturn(node);
+        when(nodeMapper.selectByPathPrefix("/1/11")).thenReturn(List.of(node));
+        when(relMapper.countByNodeIds(List.of(11L))).thenReturn(0);
+        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(
+                node(10L, 1L, "First", "/1/10", 2, 1),
+                node(12L, 1L, "Third", "/1/12", 2, 3)
+        ));
+
+        customService.deleteNode(11L, false);
+
+        verify(nodeMapper).deleteByIds(List.of(11L));
+        verify(nodeMapper).updateSort(12L, 2);
+    }
+
+    @Test
     void listSubtreeNodesReturnsNodesInTreeOrderUsingSiblingSort() {
         CatalogNode root = node(1L, 0L, "Root", "/1", 1, 1);
         when(nodeMapper.selectById(1L)).thenReturn(root);

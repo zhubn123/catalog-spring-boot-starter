@@ -3,6 +3,7 @@ package io.github.zhubn123.catalog.autoconfigure;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
 import io.github.zhubn123.catalog.service.CatalogSortStrategy;
+import io.github.zhubn123.catalog.service.ContiguousCatalogSortStrategy;
 import io.github.zhubn123.catalog.service.GapCatalogSortStrategy;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -43,6 +44,15 @@ class CatalogAutoConfigurationTest {
                     assertThat(((GapCatalogSortStrategy) context.getBean(CatalogSortStrategy.class)).getStep())
                             .isEqualTo(128);
                 });
+    }
+
+    @Test
+    void supportsBuiltInContiguousStrategy() {
+        contextRunner
+                .withPropertyValues("catalog.sort.strategy=contiguous")
+                .run(context ->
+                        assertThat(context.getBean(CatalogSortStrategy.class))
+                                .isInstanceOf(ContiguousCatalogSortStrategy.class));
     }
 
     @Test

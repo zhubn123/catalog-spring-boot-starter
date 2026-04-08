@@ -6,6 +6,7 @@ import io.github.zhubn123.catalog.service.CatalogService;
 import io.github.zhubn123.catalog.service.CatalogServiceImpl;
 import io.github.zhubn123.catalog.service.CatalogSortStrategy;
 import io.github.zhubn123.catalog.service.CatalogTreeNodeEnricher;
+import io.github.zhubn123.catalog.service.ContiguousCatalogSortStrategy;
 import io.github.zhubn123.catalog.service.GapCatalogSortStrategy;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -35,6 +36,9 @@ public class CatalogAutoConfiguration {
         String strategy = sort.getStrategy();
         if (!StringUtils.hasText(strategy) || GapCatalogSortStrategy.NAME.equalsIgnoreCase(strategy.trim())) {
             return new GapCatalogSortStrategy(sort.getGapStep());
+        }
+        if (ContiguousCatalogSortStrategy.NAME.equalsIgnoreCase(strategy.trim())) {
+            return new ContiguousCatalogSortStrategy();
         }
         throw new IllegalArgumentException("Unsupported catalog.sort.strategy: " + strategy);
     }
