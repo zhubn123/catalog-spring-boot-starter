@@ -1,6 +1,7 @@
 package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogSortRepairResult;
 import io.github.zhubn123.catalog.exception.CatalogException;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
@@ -9,7 +10,10 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -168,6 +172,33 @@ final class CatalogNodeCommandService {
         nodeMapper.deleteByIds(nodeIds);
     }
 
+    CatalogSortRepairResult repairSiblingSorts(Long parentId) {
+        Long normalizedParentId = normalizeParentId(parentId);
+        List<CatalogNode> siblings = new ArrayList<>(nodeMapper.selectByParentId(normalizedParentId));
+        int updatedNodes = rebalanceSiblingSorts(siblings);
+        return new CatalogSortRepairResult("PARENT", normalizedParentId, 1, siblings.size(), updatedNodes);
+    }
+
+    CatalogSortRepairResult repairAllSiblingSorts() {
+        List<CatalogNode> nodes = nodeMapper.selectAll();
+        if (nodes == null || nodes.isEmpty()) {
+            return new CatalogSortRepairResult("ALL", null, 0, 0, 0);
+        }
+
+        Map<Long, List<CatalogNode>> siblingsByParent = new LinkedHashMap<>();
+        for (CatalogNode node : nodes) {
+            siblingsByParent.computeIfAbsent(normalizeParentId(node.getParentId()), key -> new ArrayList<>()).add(node);
+        }
+
+        int scannedNodes = 0;
+        int updatedNodes = 0;
+        for (List<CatalogNode> siblings : siblingsByParent.values()) {
+            scannedNodes += siblings.size();
+            updatedNodes += rebalanceSiblingSorts(siblings);
+        }
+        return new CatalogSortRepairResult("ALL", null, siblingsByParent.size(), scannedNodes, updatedNodes);
+    }
+
     private CatalogNode getRequiredNode(Long nodeId) {
         if (nodeId == null || nodeId <= 0) {
             throw CatalogException.invalidArgument("节点ID无效");
@@ -259,8 +290,17 @@ final class CatalogNodeCommandService {
         return candidate;
     }
 
-    private void rebalanceSiblingSorts(List<CatalogNode> siblings) {
+    private int rebalanceSiblingSorts(List<CatalogNode> siblings) {
+        if (siblings == null || siblings.isEmpty()) {
+            return 0;
+        }
+
+        siblings.sort(Comparator
+                .comparingInt((CatalogNode sibling) -> defaultSort(sibling.getSort()))
+                .thenComparing(sibling -> sibling.getId() == null ? Long.MAX_VALUE : sibling.getId()));
+
         int expectedSort = SORT_STEP;
+        int updatedNodes = 0;
         for (CatalogNode sibling : siblings) {
             if (sibling == null || sibling.getId() == null) {
                 expectedSort = addSortStep(expectedSort, 1);
@@ -269,9 +309,11 @@ final class CatalogNodeCommandService {
             if (!Objects.equals(sibling.getSort(), expectedSort)) {
                 nodeMapper.updateSort(sibling.getId(), expectedSort);
                 sibling.setSort(expectedSort);
+                updatedNodes++;
             }
             expectedSort = addSortStep(expectedSort, 1);
         }
+        return updatedNodes;
     }
 
     private int nextAppendSort(Long parentId) {

@@ -2,6 +2,7 @@ package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogSortRepairResult;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.domain.CatalogRel;
 import io.github.zhubn123.catalog.exception.CatalogException;
@@ -490,6 +491,43 @@ class CatalogServiceImplTest {
         verify(relMapper, never()).deleteByNodeIds(anyList());
         verify(nodeMapper, never()).deleteByIds(anyList());
         verify(nodeMapper, never()).selectByParentId(anyLong());
+    }
+
+    @Test
+    void repairSiblingSortsRebuildsSingleParentOrdering() {
+        when(nodeMapper.selectByParentId(0L)).thenReturn(List.of(
+                node(3L, 0L, "Root-C", "/3", 1, 4096),
+                node(1L, 0L, "Root-A", "/1", 1, 1024),
+                node(2L, 0L, "Root-B", "/2", 1, 4097)
+        ));
+
+        CatalogSortRepairResult result = service.repairSiblingSorts(0L);
+
+        verify(nodeMapper).updateSort(3L, 2048);
+        verify(nodeMapper).updateSort(2L, 3072);
+        assertThat(result.getScope()).isEqualTo("PARENT");
+        assertThat(result.getParentId()).isEqualTo(0L);
+        assertThat(result.getUpdatedNodes()).isEqualTo(2);
+    }
+
+    @Test
+    void repairAllSiblingSortsRebuildsEverySiblingGroup() {
+        when(nodeMapper.selectAll()).thenReturn(List.of(
+                node(1L, 0L, "Root-A", "/1", 1, 1024),
+                node(2L, 0L, "Root-B", "/2", 1, 4096),
+                node(3L, 1L, "Child-A", "/1/3", 2, 4096),
+                node(4L, 1L, "Child-B", "/1/4", 2, 8192)
+        ));
+
+        CatalogSortRepairResult result = service.repairAllSiblingSorts();
+
+        verify(nodeMapper).updateSort(2L, 2048);
+        verify(nodeMapper).updateSort(3L, 1024);
+        verify(nodeMapper).updateSort(4L, 2048);
+        assertThat(result.getScope()).isEqualTo("ALL");
+        assertThat(result.getGroups()).isEqualTo(2);
+        assertThat(result.getScannedNodes()).isEqualTo(4);
+        assertThat(result.getUpdatedNodes()).isEqualTo(3);
     }
 
     private CatalogNode node(Long id, Long parentId, String name, String path, Integer level, Integer sort) {

@@ -241,6 +241,7 @@ catalog-spring-boot-starter/
 - 同级节点默认采用“跳跃排序”策略分配 `sort` 值，而不是要求连续整数
 - 调整位置时会优先复用相邻节点之间的空隙，只有空隙耗尽时才对局部兄弟节点做重排
 - 调用方应只依赖“按 `sort` 升序即可得到正确顺序”，不要依赖 `sort` 连续或从 `1` 开始
+- 如需修复历史脏数据或手工改库后的排序间隔，可显式调用 `/catalog/admin/repairSort` 或 `/catalog/admin/repairSort/all`
 
 ### 路径冗余设计
 

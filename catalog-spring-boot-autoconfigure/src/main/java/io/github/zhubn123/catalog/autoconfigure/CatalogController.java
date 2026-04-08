@@ -2,6 +2,7 @@ package io.github.zhubn123.catalog.autoconfigure;
 
 import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogSortRepairResult;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.exception.CatalogException;
 import io.github.zhubn123.catalog.service.CatalogService;
@@ -110,6 +111,25 @@ public class CatalogController {
         Long effectiveNodeId = request != null && request.nodeId() != null ? request.nodeId() : nodeId;
         Boolean effectiveRecursive = request != null && request.recursive() != null ? request.recursive() : recursive;
         catalogService.deleteNode(requirePositiveId(effectiveNodeId, "nodeId"), Boolean.TRUE.equals(effectiveRecursive));
+    }
+
+    /**
+     * 显式修复指定父节点下的同级排序。
+     *
+     * <p>用于治理历史脏数据或手工改库后的排序间隔问题；
+     * 当 {@code parentId} 为空、为 {@code 0} 或小于 {@code 0} 时，表示修复根节点列表。</p>
+     */
+    @PostMapping("/admin/repairSort")
+    public CatalogSortRepairResult repairSort(Long parentId) {
+        return catalogService.repairSiblingSorts(parentId);
+    }
+
+    /**
+     * 显式修复整棵目录树中的同级排序。
+     */
+    @PostMapping("/admin/repairSort/all")
+    public CatalogSortRepairResult repairAllSorts() {
+        return catalogService.repairAllSiblingSorts();
     }
 
     /**

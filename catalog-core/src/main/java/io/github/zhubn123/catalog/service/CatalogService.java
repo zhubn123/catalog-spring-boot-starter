@@ -2,6 +2,7 @@ package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogSortRepairResult;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 
 import java.util.List;
@@ -27,6 +28,19 @@ public interface CatalogService {
     void updateNode(Long nodeId, String name, String code, Integer sort);
 
     void deleteNode(Long nodeId, boolean recursive);
+
+    /**
+     * 显式修复指定父节点下的同级排序数据。
+     *
+     * <p>用于治理历史脏数据或人工调整后的排序间隔问题，不属于日常写操作热路径。
+     * 当 {@code parentId} 为空、为 {@code 0} 或小于 {@code 0} 时，表示修复根节点列表。</p>
+     */
+    CatalogSortRepairResult repairSiblingSorts(Long parentId);
+
+    /**
+     * 显式修复整棵目录树中所有同级排序数据。
+     */
+    CatalogSortRepairResult repairAllSiblingSorts();
 
     /**
      * 将业务对象绑定到单个叶子节点。

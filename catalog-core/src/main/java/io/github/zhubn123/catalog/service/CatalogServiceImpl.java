@@ -2,6 +2,7 @@ package io.github.zhubn123.catalog.service;
 
 import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogSortRepairResult;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
@@ -75,6 +76,18 @@ public class CatalogServiceImpl implements CatalogService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteNode(Long nodeId, boolean recursive) {
         nodeCommandService.deleteNode(nodeId, recursive);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public CatalogSortRepairResult repairSiblingSorts(Long parentId) {
+        return nodeCommandService.repairSiblingSorts(parentId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public CatalogSortRepairResult repairAllSiblingSorts() {
+        return nodeCommandService.repairAllSiblingSorts();
     }
 
     @Override

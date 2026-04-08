@@ -2,6 +2,7 @@ package io.github.zhubn123.catalog.autoconfigure;
 
 import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogSortRepairResult;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
 import io.github.zhubn123.catalog.service.CatalogService;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,6 +64,28 @@ class CatalogControllerTest {
         controller.batchBindPairs(null, "11, 12", " D-1 , D-2 ", "deliver");
 
         verify(catalogService).batchBindByBizIds(List.of(11L, 12L), List.of("D-1", "D-2"), "deliver");
+    }
+
+    @Test
+    void repairSortUsesExplicitMaintenanceEndpoint() {
+        when(catalogService.repairSiblingSorts(0L))
+                .thenReturn(new CatalogSortRepairResult("PARENT", 0L, 1, 3, 2));
+
+        CatalogSortRepairResult result = controller.repairSort(0L);
+
+        verify(catalogService).repairSiblingSorts(0L);
+        assertThat(result.getUpdatedNodes()).isEqualTo(2);
+    }
+
+    @Test
+    void repairAllSortsUsesGlobalMaintenanceEndpoint() {
+        when(catalogService.repairAllSiblingSorts())
+                .thenReturn(new CatalogSortRepairResult("ALL", null, 4, 15, 5));
+
+        CatalogSortRepairResult result = controller.repairAllSorts();
+
+        verify(catalogService).repairAllSiblingSorts();
+        assertThat(result.getGroups()).isEqualTo(4);
     }
 
     @Test
