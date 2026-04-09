@@ -49,11 +49,10 @@ public final class CatalogQueryService {
         this.treeAssembler = treeAssembler;
     }
 
-    public List<CatalogNode> listNodesInTreeOrder() {
-        return sortNodesForTreeTraversal(nodeMapper.selectAll());
-    }
-
     public List<CatalogNode> listChildrenNodes(Long parentId) {
+        if (parentId == null || parentId <= 0) {
+            throw CatalogException.invalidArgument("根节点查询请使用 childrenPage");
+        }
         return nodeMapper.selectByParentId(normalizeParentId(parentId));
     }
 
@@ -70,10 +69,6 @@ public final class CatalogQueryService {
         List<CatalogNode> items = nodeMapper.selectByParentIdPage(effectiveParentId, offset, effectiveSize);
         boolean hasNext = offset + items.size() < total;
         return new CatalogPage<>(effectivePage, effectiveSize, total, hasNext, items);
-    }
-
-    public List<CatalogTreeNode> listNodeTree() {
-        return treeAssembler.assemble(listNodesInTreeOrder(), CatalogTreeAssembleContext.fullTree());
     }
 
     public List<CatalogNode> listPathByNodeId(Long nodeId) {

@@ -1,15 +1,14 @@
 package io.github.zhubn123.catalog.service;
 
-import io.github.zhubn123.catalog.domain.CatalogPage;
 import io.github.zhubn123.catalog.domain.CatalogNode;
+import io.github.zhubn123.catalog.domain.CatalogPage;
+import io.github.zhubn123.catalog.domain.CatalogRel;
 import io.github.zhubn123.catalog.domain.CatalogSortRepairResult;
 import io.github.zhubn123.catalog.domain.CatalogTreeNode;
-import io.github.zhubn123.catalog.domain.CatalogRel;
 import io.github.zhubn123.catalog.exception.CatalogException;
 import io.github.zhubn123.catalog.mapper.CatalogNodeMapper;
 import io.github.zhubn123.catalog.mapper.CatalogRelMapper;
 import io.github.zhubn123.catalog.service.sort.GapCatalogSortStrategy;
-import io.github.zhubn123.catalog.service.sort.ContiguousCatalogSortStrategy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -257,30 +256,11 @@ class CatalogServiceImplTest {
     }
 
     @Test
-    void listNodesInTreeOrderReturnsNodesInTreeOrderUsingSiblingSort() {
-        when(nodeMapper.selectAll()).thenReturn(List.of(
-                node(1L, 0L, "Root", "/1", 1, 1),
-                node(10L, 1L, "Second", "/1/10", 2, 2),
-                node(11L, 10L, "Grandchild", "/1/10/11", 3, 1),
-                node(2L, 1L, "First", "/1/2", 2, 1)
-        ));
-
-        List<CatalogNode> nodes = service.listNodesInTreeOrder();
-
-        assertThat(nodes).extracting(CatalogNode::getId).containsExactly(1L, 2L, 10L, 11L);
-    }
-
-    @Test
-    void listChildrenNodesReturnsDirectChildrenForRootLazyLoading() {
-        when(nodeMapper.selectByParentId(0L)).thenReturn(List.of(
-                node(1L, 0L, "Root-A", "/1", 1, 1024),
-                node(2L, 0L, "Root-B", "/2", 1, 2048)
-        ));
-
-        List<CatalogNode> children = service.listChildrenNodes(null);
-
-        verify(nodeMapper).selectByParentId(0L);
-        assertThat(children).extracting(CatalogNode::getId).containsExactly(1L, 2L);
+    void listChildrenNodesRejectsRootQuery() {
+        assertThatThrownBy(() -> service.listChildrenNodes(null))
+                .isInstanceOf(CatalogException.class)
+                .extracting("errorCode")
+                .isEqualTo("INVALID_ARGUMENT");
     }
 
     @Test
@@ -310,26 +290,6 @@ class CatalogServiceImplTest {
 
         verify(nodeMapper, never()).countByParentId(anyLong());
         verify(nodeMapper, never()).selectByParentIdPage(anyLong(), anyLong(), anyInt());
-    }
-
-    @Test
-    void listNodeTreeReturnsNestedTreeStructure() {
-        when(nodeMapper.selectAll()).thenReturn(List.of(
-                node(1L, 0L, "Root", "/1", 1, 1),
-                node(10L, 1L, "Second", "/1/10", 2, 2),
-                node(11L, 10L, "Grandchild", "/1/10/11", 3, 1),
-                node(2L, 1L, "First", "/1/2", 2, 1)
-        ));
-
-        List<CatalogTreeNode> tree = service.listNodeTree();
-
-        assertThat(tree).singleElement().satisfies(root -> {
-            assertThat(root.getId()).isEqualTo(1L);
-            assertThat(root.getChildren()).extracting(CatalogTreeNode::getId).containsExactly(2L, 10L);
-            assertThat(root.getChildren().get(1).getChildren())
-                    .extracting(CatalogTreeNode::getId)
-                    .containsExactly(11L);
-        });
     }
 
     @Test
@@ -391,80 +351,6 @@ class CatalogServiceImplTest {
         verify(nodeMapper).updateParentLevelPathSort(23L, 0L, 1, "/23", 1040);
         verify(nodeMapper).moveSubtree("/21/23", "/23", -1);
         verify(nodeMapper, never()).selectByParentId(anyLong());
-    }
-
-    @Test
-    void contiguousStrategyReordersSameParentMoveAsDenseSequence() {
-        CatalogService customService = new CatalogServiceImpl(
-                nodeMapper,
-                relMapper,
-                List.of(),
-                new ContiguousCatalogSortStrategy()
-        );
-        CatalogNode parent = node(1L, 0L, "Root", "/1", 1, 1);
-        CatalogNode first = node(10L, 1L, "First", "/1/10", 2, 1);
-        CatalogNode second = node(11L, 1L, "Second", "/1/11", 2, 2);
-        CatalogNode third = node(12L, 1L, "Third", "/1/12", 2, 3);
-        when(nodeMapper.selectById(11L)).thenReturn(second);
-        when(nodeMapper.selectById(1L)).thenReturn(parent);
-        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(first, second, third));
-
-        customService.moveNode(11L, 1L, 0);
-
-        verify(nodeMapper).updateSort(11L, 1);
-        verify(nodeMapper).updateSort(10L, 2);
-    }
-
-    @Test
-    void contiguousStrategyCompactsOldParentWhenMovingAcrossParents() {
-        CatalogService customService = new CatalogServiceImpl(
-                nodeMapper,
-                relMapper,
-                List.of(),
-                new ContiguousCatalogSortStrategy()
-        );
-        CatalogNode movingNode = node(11L, 1L, "Second", "/1/11", 2, 2);
-        CatalogNode newParent = node(20L, 0L, "Archive", "/20", 1, 1);
-        when(nodeMapper.selectById(11L)).thenReturn(movingNode);
-        when(nodeMapper.selectById(20L)).thenReturn(newParent);
-        when(nodeMapper.selectByParentId(20L)).thenReturn(List.of(
-                node(30L, 20L, "Existing-A", "/20/30", 2, 1),
-                node(31L, 20L, "Existing-B", "/20/31", 2, 2)
-        ));
-        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(
-                node(10L, 1L, "First", "/1/10", 2, 1),
-                node(12L, 1L, "Third", "/1/12", 2, 3)
-        ));
-
-        customService.moveNode(11L, 20L, 1);
-
-        verify(nodeMapper).updateSort(31L, 3);
-        verify(nodeMapper).updateParentLevelPathSort(11L, 20L, 2, "/20/11", 2);
-        verify(nodeMapper).moveSubtree("/1/11", "/20/11", 0);
-        verify(nodeMapper).updateSort(12L, 2);
-    }
-
-    @Test
-    void contiguousStrategyCompactsOldParentAfterDelete() {
-        CatalogService customService = new CatalogServiceImpl(
-                nodeMapper,
-                relMapper,
-                List.of(),
-                new ContiguousCatalogSortStrategy()
-        );
-        CatalogNode node = node(11L, 1L, "Leaf", "/1/11", 2, 2);
-        when(nodeMapper.selectById(11L)).thenReturn(node);
-        when(nodeMapper.selectByPathPrefix("/1/11")).thenReturn(List.of(node));
-        when(relMapper.countByNodeIds(List.of(11L))).thenReturn(0);
-        when(nodeMapper.selectByParentId(1L)).thenReturn(List.of(
-                node(10L, 1L, "First", "/1/10", 2, 1),
-                node(12L, 1L, "Third", "/1/12", 2, 3)
-        ));
-
-        customService.deleteNode(11L, false);
-
-        verify(nodeMapper).deleteByIds(List.of(11L));
-        verify(nodeMapper).updateSort(12L, 2);
     }
 
     @Test

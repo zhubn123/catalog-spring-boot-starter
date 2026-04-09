@@ -78,9 +78,11 @@ public final class GapCatalogSortStrategy implements CatalogSortStrategy {
 
         int gap = nextSort - previousSort;
         if (gap <= 1) {
+            // 仅用局部空隙已经无法插入时，交由调用方决定是否先重排再重试。
             return null;
         }
 
+        // 优先取中位值，尽可能复用已有空隙，避免每次中间插入都触发整组兄弟节点重排。
         int candidate = previousSort + gap / 2;
         if (candidate == previousSort || candidate == nextSort) {
             return null;
@@ -103,6 +105,7 @@ public final class GapCatalogSortStrategy implements CatalogSortStrategy {
                 continue;
             }
             if (!Objects.equals(sibling.getSort(), expectedSort)) {
+                // 同步回写传入对象，便于调用方在同一批 siblings 上继续计算下一步 sort。
                 sibling.setSort(expectedSort);
                 updates.put(sibling.getId(), expectedSort);
             }
@@ -119,6 +122,7 @@ public final class GapCatalogSortStrategy implements CatalogSortStrategy {
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
         orderedSiblings.sort(Comparator
+                // 先按归一化后的 sort 排序，再用 id 兜底，保证历史脏数据下重排结果稳定可重复。
                 .comparingInt((CatalogNode sibling) -> normalizeSort(sibling == null ? null : sibling.getSort()))
                 .thenComparing(sibling -> sibling == null || sibling.getId() == null ? Long.MAX_VALUE : sibling.getId()));
         return orderedSiblings;

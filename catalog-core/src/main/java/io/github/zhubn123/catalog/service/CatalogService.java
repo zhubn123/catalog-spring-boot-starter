@@ -70,17 +70,10 @@ public interface CatalogService {
     void unbind(Long nodeId, String bizId, String bizType);
 
     /**
-     * 按树遍历顺序返回全量节点列表。
-     *
-     * <p>该方法返回的是扁平节点列表，而不是已经组装好的嵌套树结构。</p>
-     */
-    List<CatalogNode> listNodesInTreeOrder();
-
-    /**
      * 返回指定父节点的直接子节点列表。
      *
      * <p>该接口不递归展开整棵树，更适合生产场景按层级懒加载；
-     * 当 {@code parentId} 为空、为 {@code 0} 或小于 {@code 0} 时，表示查询根节点列表。</p>
+     * 仅接受正数 {@code parentId}，根节点查询请改用 {@link #pageChildrenNodes(Long, Integer, Integer)}。</p>
      */
     List<CatalogNode> listChildrenNodes(Long parentId);
 
@@ -91,22 +84,6 @@ public interface CatalogService {
      * 当 {@code parentId} 为空、为 {@code 0} 或小于 {@code 0} 时，表示查询根节点列表。</p>
      */
     CatalogPage<CatalogNode> pageChildrenNodes(Long parentId, Integer page, Integer size);
-
-    /**
-     * 返回完整目录的嵌套树结构。
-     *
-     * <p>与 {@link #listNodesInTreeOrder()} 不同，该方法会在后端完成父子关系组装，
-     * 适合前端直接展示树形组件。</p>
-     */
-    List<CatalogTreeNode> listNodeTree();
-
-    /**
-     * 兼容旧命名，仍然返回按树遍历顺序排列的扁平节点列表。
-     */
-    @Deprecated
-    default List<CatalogNode> tree() {
-        return listNodesInTreeOrder();
-    }
 
     /**
      * 查询业务对象绑定节点的唯一路径。

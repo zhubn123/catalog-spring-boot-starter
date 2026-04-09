@@ -50,6 +50,7 @@ public interface CatalogSortStrategy {
         if (targetSort == null) {
             return null;
         }
+        // gap 等稀疏排序策略只需要更新移动节点自身，避免把一次插入放大成整组兄弟节点重写。
         Map<Long, Integer> updates = new LinkedHashMap<>();
         updates.put(movingNode.getId(), targetSort);
         return updates;

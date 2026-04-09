@@ -26,7 +26,7 @@
 ### 1.3 业务绑定约束
 
 - 目录节点可以只作为容器节点，不强制绑定业务对象。
-- 只有叶子节点允许绑定业务对象。
+- 默认绑定策略不区分叶子/非叶子节点。
 - 同一个 `bizType + bizId` 最多只能绑定一个目录节点。
 - 批量绑定推荐使用“多组一对一绑定”，而不是把同一个业务对象绑定到多个节点。
 
@@ -123,7 +123,7 @@ sample 工程当前会在叶子节点补充一个 `extensions.bindingSummary`，
 |-------------|----------|
 | `400` | 参数错误、请求体格式错误、校验失败 |
 | `404` | 节点不存在、父节点不存在 |
-| `409` | 非叶子节点绑定、删除时存在子节点/绑定、业务对象已绑定到其他节点 |
+| `409` | 删除时存在子节点/绑定、业务对象已绑定到其他节点 |
 | `500` | 未预期的服务端异常 |
 
 常见错误码：
@@ -135,7 +135,6 @@ sample 工程当前会在叶子节点补充一个 `extensions.bindingSummary`，
 | `NODE_NOT_FOUND` | 节点不存在 |
 | `PARENT_NOT_FOUND` | 父节点不存在 |
 | `NAME_BLANK` | 节点名称为空 |
-| `NOT_LEAF_NODE` | 非叶子节点不允许绑定业务对象 |
 | `CANNOT_MOVE_TO_SELF` | 不能移动到自己或自己的子树下 |
 | `HAS_CHILDREN` | 删除节点时仍有子节点 |
 | `HAS_BINDINGS` | 删除节点时仍有业务绑定 |
@@ -267,7 +266,7 @@ sample 工程当前会在叶子节点补充一个 `extensions.bindingSummary`，
 
 说明：
 
-- 仅允许绑定到叶子节点。
+- 默认绑定策略不限制叶子/非叶子节点。
 - 如果同一个业务对象已经绑定到其他节点，会返回 `409`。
 - 如果重复绑定到同一个节点，会按幂等语义处理。
 
@@ -332,23 +331,25 @@ sample 工程当前会在叶子节点补充一个 `extensions.bindingSummary`，
 
 ## 6. 查询接口
 
-### 6.1 获取完整目录的扁平列表
+### 6.1 查询直接子节点
 
-`GET /catalog/nodes`
+`GET /catalog/children?parentId=12`
 
 说明：
 
 - 返回 `List<CatalogNode>`。
-- 结果已经按树前序遍历排序，但仍然是扁平列表。
+- 仅接受正数 `parentId`。
+- 根节点查询不再通过这个接口暴露，请改用 `/catalog/childrenPage`。
 
-### 6.2 获取完整目录的嵌套树
+### 6.2 分页查询直接子节点
 
-`GET /catalog/tree`
+`GET /catalog/childrenPage?parentId=0&page=1&size=20`
 
 说明：
 
-- 返回 `List<CatalogTreeNode>`。
-- 后端已经完成 `children` 组装，适合树组件直接消费。
+- 返回 `CatalogPage<CatalogNode>`。
+- `parentId <= 0` 时表示查询根节点分页结果。
+- 推荐作为根节点列表和大兄弟集合的默认读取入口。
 
 ### 6.3 查询业务路径
 
@@ -424,7 +425,8 @@ sample 工程当前会在叶子节点补充一个 `extensions.bindingSummary`，
 
 优先使用：
 
-- `/catalog/tree`
+- `/catalog/childrenPage` 作为根节点入口
+- `/catalog/children` 作为非根节点懒加载入口
 - `/catalog/bizTree`
 - `/catalog/subtree`
 
@@ -432,9 +434,15 @@ sample 工程当前会在叶子节点补充一个 `extensions.bindingSummary`，
 
 优先使用：
 
-- `/catalog/nodes`
+- `/catalog/childrenPage`
+- `/catalog/children`
 - `/catalog/bizTreeNodes`
 - `/catalog/subtreeNodes`
+
+说明：
+
+- `/catalog/nodes` 与 `/catalog/tree` 这两个整棵树全量读取接口已移除。
+- 如果需要完整树快照，建议按业务范围改用 `bizTree` / `subtree` 或自行分批加载。
 
 ### 7.3 创建目录但暂不绑定业务对象
 

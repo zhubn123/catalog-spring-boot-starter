@@ -17,6 +17,9 @@ mybatis:
 catalog:
   enabled: true
   enable-rest-api: true
+  sort:
+    strategy: gap
+    gap-step: 1024
 
 logging:
   level:

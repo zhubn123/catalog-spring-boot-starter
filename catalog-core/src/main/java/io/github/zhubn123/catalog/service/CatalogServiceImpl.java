@@ -120,11 +120,6 @@ public class CatalogServiceImpl implements CatalogService {
     }
 
     @Override
-    public List<CatalogNode> listNodesInTreeOrder() {
-        return queryService.listNodesInTreeOrder();
-    }
-
-    @Override
     public List<CatalogNode> listChildrenNodes(Long parentId) {
         return queryService.listChildrenNodes(parentId);
     }
@@ -132,11 +127,6 @@ public class CatalogServiceImpl implements CatalogService {
     @Override
     public CatalogPage<CatalogNode> pageChildrenNodes(Long parentId, Integer page, Integer size) {
         return queryService.pageChildrenNodes(parentId, page, size);
-    }
-
-    @Override
-    public List<CatalogTreeNode> listNodeTree() {
-        return queryService.listNodeTree();
     }
 
     @Override

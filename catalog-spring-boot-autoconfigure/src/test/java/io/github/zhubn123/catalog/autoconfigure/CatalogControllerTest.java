@@ -89,22 +89,23 @@ class CatalogControllerTest {
     }
 
     @Test
-    void nodesUsesStructuredListEndpoint() {
-        controller.nodes();
-
-        verify(catalogService).listNodesInTreeOrder();
-    }
-
-    @Test
     void childrenUsesDirectChildrenEndpoint() {
         CatalogNode child = new CatalogNode();
         child.setId(2L);
-        when(catalogService.listChildrenNodes(0L)).thenReturn(List.of(child));
+        when(catalogService.listChildrenNodes(9L)).thenReturn(List.of(child));
 
-        List<CatalogNode> children = controller.children(0L);
+        List<CatalogNode> children = controller.children(9L);
 
-        verify(catalogService).listChildrenNodes(0L);
+        verify(catalogService).listChildrenNodes(9L);
         assertThat(children).extracting(CatalogNode::getId).containsExactly(2L);
+    }
+
+    @Test
+    void childrenRejectsRootQuery() {
+        assertThatThrownBy(() -> controller.children(0L))
+                .hasMessageContaining("parentId");
+
+        verifyNoInteractions(catalogService);
     }
 
     @Test
@@ -119,18 +120,6 @@ class CatalogControllerTest {
         verify(catalogService).pageChildrenNodes(0L, 2, 20);
         assertThat(page.getPage()).isEqualTo(2);
         assertThat(page.getItems()).extracting(CatalogNode::getId).containsExactly(3L);
-    }
-
-    @Test
-    void treeKeepsLegacyCompatibilityAlias() {
-        CatalogTreeNode root = new CatalogTreeNode();
-        root.setId(1L);
-        when(catalogService.listNodeTree()).thenReturn(List.of(root));
-
-        List<CatalogTreeNode> tree = controller.tree();
-
-        verify(catalogService).listNodeTree();
-        assertThat(tree).extracting(CatalogTreeNode::getId).containsExactly(1L);
     }
 
     @Test

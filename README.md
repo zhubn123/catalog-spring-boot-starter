@@ -148,8 +148,8 @@ samples/catalog-demo/src/main/resources/static/catalog-demo/index.html
 
 ### 演示说明
 
-- `/catalog/tree` 更适合 sample、管理后台和小规模场景演示。
-- 真正的业务接入更推荐按父节点逐层加载，而不是默认整树全量查询。
+- sample 前端默认使用“根节点分页 + 按节点懒加载子节点”，不再默认整树全量查询。
+- 真正的业务接入更推荐按父节点逐层加载；根节点请优先使用 `/catalog/childrenPage`。
 - sample 当前重点展示的是目录树能力、绑定语义和调试链路，不是完整业务系统。
 ## 📖 API 文档
 
@@ -181,20 +181,18 @@ samples/catalog-demo/src/main/resources/static/catalog-demo/index.html
 
 | API | 方法 | 说明 |
 |-----|------|------|
-| `/catalog/children` | GET | 按父节点查询直接子节点列表，适合懒加载 |
-| `/catalog/childrenPage` | GET | 按父节点分页查询直接子节点，适合大兄弟集合 |
-| `/catalog/nodes` | GET | 获取完整目录的扁平节点列表 |
-| `/catalog/tree` | GET | 获取完整目录的嵌套树结构 |
+| `/catalog/children` | GET | 按父节点查询直接子节点列表，仅支持非根节点懒加载 |
+| `/catalog/childrenPage` | GET | 按父节点分页查询直接子节点，也是根节点的默认查询入口 |
 | `/catalog/bizPath` | GET | 查询业务路径 |
 | `/catalog/bizTreeNodes` | GET | 查询业务局部树对应的扁平节点列表 |
 | `/catalog/bizTree` | GET | 查询业务局部树的嵌套树结构 |
 | `/catalog/subtreeNodes` | GET | 查询指定节点子树的扁平节点列表 |
 | `/catalog/subtree` | GET | 查询指定节点子树的嵌套树结构 |
 
-> `children` 只返回某个父节点下的直接子节点，更适合作为生产场景里的默认树查询入口。
-> `childrenPage` 在 `children` 的基础上补充分页元数据，适合根节点较多或热点父节点场景。
-> `nodes`、`bizTreeNodes`、`subtreeNodes` 返回的都是按树遍历顺序排列的扁平节点列表。
-> `tree`、`bizTree`、`subtree` 会在后端完成 `children` 组装，直接返回嵌套树结构。
+> `children` 只返回某个正数 `parentId` 下的直接子节点，适合作为非根节点的懒加载入口。
+> `childrenPage` 在 `children` 的基础上补充分页元数据，也是根节点的默认查询入口。
+> `bizTreeNodes`、`subtreeNodes` 返回的都是按树遍历顺序排列的扁平节点列表。
+> `bizTree`、`subtree` 会在后端完成 `children` 组装，直接返回嵌套树结构。
 > 树形节点额外包含 `leaf`、`bindable` 与 `extensions` 字段，便于后续继续扩展节点业务装配策略。
 
 ### 树节点扩展策略
@@ -210,7 +208,7 @@ catalog:
   enabled: true              # 是否启用
   enable-rest-api: true      # 是否启用REST API
   sort:
-    strategy: gap            # 当前内置策略：gap / contiguous
+    strategy: gap            # 当前内置策略：gap
     gap-step: 1024           # gap 排序步长，适合中小规模同级节点场景
 ```
 
@@ -246,13 +244,10 @@ catalog-spring-boot-starter/
 - 调整位置时会优先复用相邻节点之间的空隙，只有空隙耗尽时才对局部兄弟节点做重排
 - 调用方应只依赖“按 `sort` 升序即可得到正确顺序”，不要依赖 `sort` 连续或从 `1` 开始
 - 如需修复历史脏数据或手工改库后的排序间隔，可显式调用 `/catalog/admin/repairSort` 或 `/catalog/admin/repairSort/all`
-- 当前内置策略包括：
-  - `gap`：默认策略，适合中小规模同级节点场景，可通过 `catalog.sort.gap-step` 调整步长
-  - `contiguous`：连续整数排序，适合更重视排序值可读性的场景，但中间插入、跨父节点迁移和删除后的写放大会更明显
+- 当前内置策略为 `gap`：适合中小规模同级节点场景，可通过 `catalog.sort.gap-step` 调整步长
 - 当前 `sort` 字段仍为 `INT`：
   - `gap-step=1024` 时，单个父节点理论上大约可容纳 209 万次尾部追加后再触及整数上限
   - 但如果持续在同一个局部空隙中间插入，远早于整数上限就会触发局部重排
-  - `contiguous` 理论上也受 `INT` 上限约束，但通常会先遇到热点父节点下的写放大问题
 - 如果业务需要更大的数值空间或非整数型排序键，可通过自定义 `CatalogSortStrategy` 配合调整存储字段类型来扩展
 
 ### 路径冗余设计

@@ -88,6 +88,7 @@ public final class CatalogNodeCommandService {
             node.setParentId(normalizedParentId);
             node.setName(validNames.get(i));
             node.setLevel(parent == null ? 1 : parent.getLevel() + 1);
+            // 后续批量节点直接基于前一个待插入节点继续推导，避免为每个节点重新查一次数据库最大 sort。
             int sort = i == 0 ? startSort : sortStrategy.nextAppendSort(nodes.get(i - 1).getSort());
             node.setSort(sort);
             nodes.add(node);
@@ -247,6 +248,7 @@ public final class CatalogNodeCommandService {
         int currentSort = sortStrategy.normalizeSort(node.getSort());
 
         if (targetIndex == null && !sortStrategy.requiresSiblingCompactionAfterRemoval()) {
+            // gap 策略下“追加到末尾”可以走快速路径，只关心当前最大 sort，不需要整组兄弟节点参与计算。
             Integer maxSortValue = nodeMapper.selectMaxSortByParent(parentId);
             if (maxSortValue == null) {
                 return singleNodeSort(node.getId(), sortStrategy.nextAppendSort(null));
@@ -269,6 +271,7 @@ public final class CatalogNodeCommandService {
             return resolvedSorts;
         }
 
+        // 只有当前局部空隙不够时才做一次显式重排，尽量把重写范围限制在单个父节点下。
         rebalanceSiblingSorts(siblings);
         resolvedSorts = sortStrategy.resolveMoveSorts(siblings, node, normalizedIndex);
         if (resolvedSorts != null) {
@@ -296,6 +299,7 @@ public final class CatalogNodeCommandService {
         if (!sortStrategy.requiresSiblingCompactionAfterRemoval()) {
             return;
         }
+        // 仅连续排序等“不能接受空洞”的策略才需要在删除/迁出后压紧原兄弟组。
         List<CatalogNode> siblings = new ArrayList<>(nodeMapper.selectByParentId(normalizeParentId(parentId)));
         rebalanceSiblingSorts(siblings);
     }

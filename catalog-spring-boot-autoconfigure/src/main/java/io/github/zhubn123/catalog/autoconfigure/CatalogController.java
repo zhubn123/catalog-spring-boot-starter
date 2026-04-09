@@ -203,24 +203,14 @@ public class CatalogController {
     }
 
     /**
-     * 返回完整目录的扁平节点列表，顺序与树前序遍历一致。
-     *
-     * <p>前端如需真正的嵌套树结构，应基于返回列表自行组装。</p>
-     */
-    @GetMapping("/nodes")
-    public List<CatalogNode> nodes() {
-        return catalogService.listNodesInTreeOrder();
-    }
-
-    /**
      * 返回指定父节点的直接子节点列表。
      *
-     * <p>该接口不递归展开整棵树，更适合按层级懒加载；当 {@code parentId} 为空、
-     * 为 {@code 0} 或小于 {@code 0} 时，表示查询根节点列表。</p>
+     * <p>该接口不递归展开整棵树，更适合按层级懒加载；仅接受正数 {@code parentId}，
+     * 根节点查询请使用 {@link #childrenPage(Long, Integer, Integer)}。</p>
      */
     @GetMapping("/children")
     public List<CatalogNode> children(Long parentId) {
-        return catalogService.listChildrenNodes(parentId);
+        return catalogService.listChildrenNodes(requirePositiveId(parentId, "parentId"));
     }
 
     /**
@@ -232,16 +222,6 @@ public class CatalogController {
     @GetMapping("/childrenPage")
     public CatalogPage<CatalogNode> childrenPage(Long parentId, Integer page, Integer size) {
         return catalogService.pageChildrenNodes(parentId, page, size);
-    }
-
-    /**
-     * 返回完整目录的嵌套树结构。
-     *
-     * <p>该接口会在后端完成 children 组装，适合树形组件直接消费。</p>
-     */
-    @GetMapping("/tree")
-    public List<CatalogTreeNode> tree() {
-        return catalogService.listNodeTree();
     }
 
     /**
