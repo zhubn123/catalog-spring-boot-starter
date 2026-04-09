@@ -12,6 +12,23 @@ export function normalizeTree(nodes) {
         .sort(compareNode);
 }
 
+export function toLazyTreeNodes(nodes) {
+    if (!Array.isArray(nodes) || nodes.length === 0) {
+        return [];
+    }
+
+    return nodes
+        .filter(Boolean)
+        .sort(compareNode)
+        .map((node) => ({
+            ...node,
+            // 懒加载树初始只拿到基础节点信息，是否为叶子节点要等首次展开后才能确认。
+            leaf: false,
+            children: [],
+            childrenLoaded: false
+        }));
+}
+
 export function isLeaf(node) {
     if (typeof node?.leaf === "boolean") {
         return node.leaf;

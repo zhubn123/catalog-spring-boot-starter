@@ -20,20 +20,16 @@ export function createBindingActions(context) {
         loadDirectBindings
     } = context;
 
-    const ensureBindableNode = () => {
+    const ensureSelectedNode = () => {
         if (!selectedNode.value) {
             ElMessage.warning("请先从左侧目录树选择一个节点");
-            return false;
-        }
-        if (!selectedNode.value.bindable) {
-            ElMessage.warning("当前节点当前不可绑定业务对象");
             return false;
         }
         return true;
     };
 
     const bindBiz = async () => {
-        if (!ensureBindableNode()) {
+        if (!ensureSelectedNode()) {
             return;
         }
         const bizId = bindForm.bizId.trim();
@@ -58,7 +54,7 @@ export function createBindingActions(context) {
     };
 
     const bindManyBizToCurrentNode = async () => {
-        if (!ensureBindableNode()) {
+        if (!ensureSelectedNode()) {
             return;
         }
         const bizIds = splitBizIds(bindManyForm.bizIdsText || "");

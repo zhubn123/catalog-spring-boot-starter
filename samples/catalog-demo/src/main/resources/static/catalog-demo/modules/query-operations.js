@@ -8,7 +8,7 @@ function resolveParentId(rawParentId, selectedNode) {
     if (selectedNode?.value?.id) {
         return Number(selectedNode.value.id);
     }
-    return 0;
+    return null;
 }
 
 export function createQueryActions(context) {
@@ -49,6 +49,10 @@ export function createQueryActions(context) {
 
     const queryChildren = async () => {
         const parentId = resolveParentId(childrenQueryForm.parentId, selectedNode);
+        if (!parentId || parentId <= 0) {
+            ElMessage.warning("根节点请使用 childrenPage，children 仅支持正数 parentId");
+            return;
+        }
         try {
             const result = await api.get(`/catalog/children?parentId=${parentId}`);
             childrenItems.value = result;
@@ -62,7 +66,8 @@ export function createQueryActions(context) {
     };
 
     const queryChildrenPage = async () => {
-        const parentId = resolveParentId(childrenQueryForm.parentId, selectedNode);
+        const resolvedParentId = resolveParentId(childrenQueryForm.parentId, selectedNode);
+        const parentId = resolvedParentId == null ? 0 : resolvedParentId;
         const page = Number(childrenQueryForm.page || 1);
         const size = Number(childrenQueryForm.size || 20);
         try {

@@ -1,11 +1,11 @@
 import { createApi, extractErrorMessage } from "./api.js";
-import { findNodeById, getBindingCount, getBindingPreview, getBindingTypes, isLeaf, normalizeTree } from "./tree-utils.js";
+import { getBindingCount, getBindingTypes, isLeaf, toLazyTreeNodes } from "./tree-utils.js";
 import { createNodeActions } from "./modules/node-operations.js";
 import { createBindingActions } from "./modules/binding-operations.js";
 import { createQueryActions } from "./modules/query-operations.js";
 import { createBusinessActions } from "./modules/business-operations.js";
 
-const { ref, reactive, computed, watch, onMounted } = Vue;
+const { ref, reactive, computed, watch, onMounted, nextTick } = Vue;
 const { ElMessage } = ElementPlus;
 
 function resolveApiBase() {
@@ -36,8 +36,9 @@ export function createCatalogDemoApp() {
             const childrenMeta = ref(null);
             const repairResult = ref(null);
             const bizPathResult = ref([]);
+            const rootPage = reactive({ page: 1, size: 10, total: 0, hasNext: false, loading: false });
 
-            const treeProps = { children: "children", label: "name" };
+            const treeProps = { children: "children", label: "name", isLeaf: "leaf" };
 
             const addForm = reactive({ parentId: "", name: "" });
             const updateForm = reactive({ nodeId: "", name: "", code: "", sort: "" });
@@ -56,6 +57,14 @@ export function createCatalogDemoApp() {
             const attachForm = reactive({ projectNodeId: "", contractNodeId: "" });
 
             const selectedNodeId = computed(() => selectedNode.value?.id ?? "");
+            const rootPageSummary = computed(() => {
+                if (rootPage.total === 0) {
+                    return `根节点分页：第 ${rootPage.page} 页，当前暂无数据`;
+                }
+                return `根节点分页：第 ${rootPage.page} 页 / 每页 ${rootPage.size} 条 / 共 ${rootPage.total} 条`;
+            });
+            const canLoadPreviousRootPage = computed(() => rootPage.page > 1);
+            const canLoadNextRootPage = computed(() => rootPage.hasNext);
 
             const logApi = (entry) => {
                 apiLogs.value.unshift(entry);
@@ -105,6 +114,22 @@ export function createCatalogDemoApp() {
                 querySubtreeForm.nodeId = String(node.id ?? "");
             };
 
+            // 懒加载树刷新时只会重新拉根节点分页，这里保留旧 path 以便在刷新后按需恢复选中链路。
+            const createSelectionSnapshot = () => {
+                if (!selectedNode.value?.id || !selectedNode.value?.path) {
+                    return null;
+                }
+                const pathIds = String(selectedNode.value.path)
+                    .split("/")
+                    .filter(Boolean)
+                    .map((item) => Number(item))
+                    .filter((item) => Number.isInteger(item) && item > 0);
+                if (pathIds.length === 0) {
+                    return null;
+                }
+                return { id: Number(selectedNode.value.id), pathIds };
+            };
+
             const loadDirectBindings = async (nodeId = selectedNodeId.value) => {
                 if (!nodeId) {
                     directBindings.value = [];
@@ -119,24 +144,99 @@ export function createCatalogDemoApp() {
                 }
             };
 
-            const loadTree = async ({ preserveSelection = true } = {}) => {
-                const previousNodeId = preserveSelection ? selectedNodeId.value : "";
-                try {
-                    const tree = normalizeTree(await api.get("/catalog/tree"));
-                    treeData.value = tree;
-                    if (previousNodeId) {
-                        const matchedNode = findNodeById(tree, previousNodeId);
-                        if (matchedNode) {
-                            syncFormsFromSelectedNode(matchedNode);
-                            await loadDirectBindings(matchedNode.id);
-                            return;
-                        }
+            const fetchDirectChildren = async (parentId) => {
+                return toLazyTreeNodes(await api.get(`/catalog/children?parentId=${parentId}`));
+            };
+
+            // 同一个节点只在首次展开时查询直接子节点，后续复用已加载的分支数据。
+            const ensureNodeChildrenLoaded = async (node) => {
+                if (!node) {
+                    return [];
+                }
+                if (node.childrenLoaded) {
+                    return Array.isArray(node.children) ? node.children : [];
+                }
+                const children = await fetchDirectChildren(node.id);
+                node.children = children;
+                node.childrenLoaded = true;
+                node.leaf = children.length === 0;
+                return children;
+            };
+
+            const expandTreePath = async (pathIds) => {
+                for (const nodeId of pathIds.slice(0, -1)) {
+                    await nextTick();
+                    const treeNode = treeRef.value?.getNode?.(nodeId) ?? treeRef.value?.store?.nodesMap?.[nodeId];
+                    if (treeNode) {
+                        treeNode.expanded = true;
                     }
-                    if (previousNodeId || tree.length === 0 || !preserveSelection) {
+                }
+                await nextTick();
+                treeRef.value?.setCurrentKey?.(pathIds[pathIds.length - 1]);
+            };
+
+            const restoreSelection = async (snapshot) => {
+                if (!snapshot?.pathIds?.length) {
+                    return false;
+                }
+                let currentNode = treeData.value.find((item) => String(item.id) === String(snapshot.pathIds[0]));
+                if (!currentNode) {
+                    return false;
+                }
+                for (let index = 1; index < snapshot.pathIds.length; index += 1) {
+                    const children = await ensureNodeChildrenLoaded(currentNode);
+                    currentNode = children.find((item) => String(item.id) === String(snapshot.pathIds[index]));
+                    if (!currentNode) {
+                        return false;
+                    }
+                }
+                syncFormsFromSelectedNode(currentNode);
+                await loadDirectBindings(currentNode.id);
+                await expandTreePath(snapshot.pathIds);
+                return true;
+            };
+
+            const loadTree = async ({ page = rootPage.page, preserveSelection = true } = {}) => {
+                const selectionSnapshot = preserveSelection ? createSelectionSnapshot() : null;
+                const targetPage = Math.max(1, Number(page || 1));
+                try {
+                    rootPage.loading = true;
+                    // 根节点现在统一走分页接口，避免 sample 再退回整棵树全量读取。
+                    const result = await api.get(`/catalog/childrenPage?parentId=0&page=${targetPage}&size=${rootPage.size}`);
+                    treeData.value = toLazyTreeNodes(result.items || []);
+                    rootPage.page = Number(result.page || targetPage);
+                    rootPage.size = Number(result.size || rootPage.size);
+                    rootPage.total = Number(result.total || 0);
+                    rootPage.hasNext = Boolean(result.hasNext);
+                    if (selectionSnapshot && await restoreSelection(selectionSnapshot)) {
+                        return;
+                    }
+                    treeRef.value?.setCurrentKey?.(null);
+                    if (!preserveSelection || selectionSnapshot || treeData.value.length === 0) {
                         clearSelection();
                     }
                 } catch (error) {
                     ElMessage.error("加载目录树失败: " + extractErrorMessage(error));
+                } finally {
+                    rootPage.loading = false;
+                }
+            };
+
+            const refreshTree = () => loadTree({ page: rootPage.page, preserveSelection: true });
+            const loadPreviousRootPage = () => loadTree({ page: rootPage.page - 1, preserveSelection: false });
+            const loadNextRootPage = () => loadTree({ page: rootPage.page + 1, preserveSelection: false });
+
+            const loadTreeNode = async (treeNode, resolve) => {
+                if (treeNode.level === 0) {
+                    resolve(treeData.value);
+                    return;
+                }
+                try {
+                    const children = await ensureNodeChildrenLoaded(treeNode.data);
+                    resolve(children);
+                } catch (error) {
+                    ElMessage.error("加载子节点失败: " + extractErrorMessage(error));
+                    resolve([]);
                 }
             };
 
@@ -172,21 +272,11 @@ export function createCatalogDemoApp() {
                     }
                     await api.postJson("/catalog/move", payload);
                     ElMessage.success("节点移动成功");
-                    await loadTree();
+                    await loadTree({ preserveSelection: false });
                 } catch (error) {
                     ElMessage.error("节点移动失败: " + extractErrorMessage(error));
-                    await loadTree();
+                    await loadTree({ preserveSelection: false });
                 }
-            };
-
-            const expandAll = () => {
-                const nodes = treeRef.value?.store?.nodesMap;
-                if (!nodes) {
-                    return;
-                }
-                Object.values(nodes).forEach((node) => {
-                    node.expanded = true;
-                });
             };
 
             const collapseAll = () => {
@@ -253,6 +343,10 @@ export function createCatalogDemoApp() {
                 treeRef,
                 treeData,
                 treeProps,
+                rootPage,
+                rootPageSummary,
+                canLoadPreviousRootPage,
+                canLoadNextRootPage,
                 selectedNode,
                 activeTab,
                 apiLogs,
@@ -285,13 +379,15 @@ export function createCatalogDemoApp() {
                 loadDirectBindings,
                 isLeaf,
                 getBindingCount,
-                getBindingPreview,
                 getBindingTypes,
                 handleNodeClick,
                 allowDrop,
                 allowDrag,
                 handleDrop,
-                expandAll,
+                loadTreeNode,
+                refreshTree,
+                loadPreviousRootPage,
+                loadNextRootPage,
                 collapseAll,
                 ...nodeActions,
                 ...bindingActions,

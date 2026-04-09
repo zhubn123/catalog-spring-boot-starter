@@ -17,7 +17,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <h2>Catalog 目录树 Demo</h2>
-        <p>左侧展示后端返回的嵌套树，右侧集中演示节点维护、节点业务绑定、增量查询、排序治理和业务示例。</p>
+        <p>左侧使用“根节点分页 + 按节点懒加载子节点”的目录树，右侧集中演示节点维护、节点业务绑定、增量查询、排序治理和业务示例。</p>
       </div>
 
       <div class="toolbar toolbar-lite">
@@ -25,21 +25,24 @@
           <el-icon><plus></plus></el-icon>
           新建根节点
         </el-button>
-        <el-button size="small" @click="loadTree">
+        <el-button size="small" @click="refreshTree">
           <el-icon><refresh></refresh></el-icon>
           刷新
         </el-button>
-        <el-button size="small" @click="expandAll">展开</el-button>
+        <el-button size="small" @click="loadPreviousRootPage" :disabled="!canLoadPreviousRootPage || rootPage.loading">上一页</el-button>
+        <el-button size="small" @click="loadNextRootPage" :disabled="!canLoadNextRootPage || rootPage.loading">下一页</el-button>
         <el-button size="small" @click="collapseAll">收起</el-button>
+        <span class="muted-tip">{{ rootPageSummary }}</span>
       </div>
 
-      <div class="tree-container">
+      <div class="tree-container" v-loading="rootPage.loading">
         <el-tree
           ref="treeRef"
           :data="treeData"
           :props="treeProps"
           node-key="id"
-          default-expand-all
+          lazy
+          :load="loadTreeNode"
           highlight-current
           draggable
           :allow-drop="allowDrop"
@@ -47,16 +50,14 @@
           :expand-on-click-node="false"
           @node-click="handleNodeClick"
           @node-drop="handleDrop">
-          <template #default="{ data }">
+          <template #default="{ node, data }">
             <span class="custom-tree-node">
               <span class="node-label">
-                <el-icon v-if="!isLeaf(data)"><folder></folder></el-icon>
-                <el-icon v-else><document></document></el-icon>
+                <el-icon v-if="node.expanded"><folder-opened></folder-opened></el-icon>
+                <el-icon v-else><folder></folder></el-icon>
                 <span class="node-name">{{ data.name }}</span>
                 <span class="node-id">#{{ data.id }}</span>
                 <span v-if="isLeaf(data)" class="leaf-badge">叶子</span>
-                <span v-if="data.bindable" class="bindable-badge">可绑定</span>
-                <span v-if="getBindingCount(data) > 0" class="binding-count-badge">已绑 {{ getBindingCount(data) }}</span>
               </span>
               <span class="node-actions">
                 <el-button type="primary" link size="small" @click.stop="showAddChildDialog(data)">
@@ -73,9 +74,9 @@
           </template>
         </el-tree>
 
-        <div v-if="treeData.length === 0" class="empty-state">
+        <div v-if="treeData.length === 0 && !rootPage.loading" class="empty-state">
           <el-icon size="48"><folder-opened></folder-opened></el-icon>
-          <p>暂无目录数据</p>
+          <p>当前根节点分页暂无数据</p>
           <p>点击上方“新建根节点”开始体验。</p>
         </div>
       </div>
@@ -87,9 +88,8 @@
         <el-tag v-if="selectedNode" type="success">{{ selectedNode.name }} (#{{ selectedNode.id }})</el-tag>
         <el-tag v-else type="info">未选择节点</el-tag>
         <el-tag v-if="selectedNode && isLeaf(selectedNode)" type="success">叶子节点</el-tag>
-        <el-tag v-if="selectedNode && selectedNode.bindable" type="warning">可绑定业务对象</el-tag>
         <span v-if="selectedNode" class="path-text">路径：{{ selectedNode.path || '-' }}</span>
-        <span class="drag-tip">左侧目录树支持直接拖拽排序。</span>
+        <span class="drag-tip">左侧目录树支持对当前已加载分支直接拖拽排序。</span>
       </div>
 
       <div class="content-area">
@@ -105,8 +105,8 @@
                   <div class="summary-item"><span class="summary-label">sort 值</span><span class="summary-value">{{ selectedNode.sort ?? '-' }}</span></div>
                   <div class="summary-item summary-item-wide"><span class="summary-label">节点路径</span><span class="summary-value">{{ selectedNode.path || '-' }}</span></div>
                   <div class="summary-item summary-item-wide">
-                    <span class="summary-label">树节点扩展摘要</span>
-                    <span class="summary-value">{{ getBindingPreview(selectedNode, 4) || '当前节点暂无直接业务绑定摘要。' }}</span>
+                    <span class="summary-label">当前展示模式</span>
+                    <span class="summary-value">{{ selectedNode.childrenLoaded && isLeaf(selectedNode) ? '当前节点已确认没有直接子节点。' : '左侧目录树按根节点分页加载，展开节点时再按需请求直接子节点。' }}</span>
                   </div>
                 </div>
                 <el-empty v-else description="先从左侧选择一个节点，再继续操作。"></el-empty>
@@ -142,11 +142,11 @@
                     <el-option label="task" value="task"></el-option>
                     <el-option label="custom" value="custom"></el-option>
                   </el-select>
-                  <el-input v-model="bindForm.bizId" placeholder="单个业务 ID" :disabled="!selectedNode || !selectedNode.bindable"></el-input>
+                  <el-input v-model="bindForm.bizId" placeholder="单个业务 ID" :disabled="!selectedNode"></el-input>
                   <el-button type="primary" @click="bindBiz" :disabled="!selectedNode">绑定到当前节点</el-button>
                 </div>
                 <div class="form-row align-start">
-                  <el-input v-model="bindManyForm.bizIdsText" class="w-flex" type="textarea" :rows="3" placeholder="多个业务 ID，支持逗号或换行分隔，会逐个追加到当前节点。" :disabled="!selectedNode || !selectedNode.bindable"></el-input>
+                  <el-input v-model="bindManyForm.bizIdsText" class="w-flex" type="textarea" :rows="3" placeholder="多个业务 ID，支持逗号或换行分隔，会逐个追加到当前节点。" :disabled="!selectedNode"></el-input>
                 </div>
                 <div class="form-row justify-end">
                   <el-button type="primary" plain @click="bindManyBizToCurrentNode" :disabled="!selectedNode">批量追加绑定</el-button>
@@ -178,17 +178,17 @@
             <div class="panel-grid">
               <section class="panel panel-span-2">
                 <div class="panel-title">直接子节点与分页查询</div>
-                <p class="muted-tip">这里演示当前更推荐的生产查询路径：按父节点增量查询，而不是默认整树全量读取。</p>
+                <p class="muted-tip">这里演示当前更推荐的生产查询路径：按父节点增量查询。<code>children</code> 仅支持非根节点，根节点请使用 <code>childrenPage</code>。</p>
                 <div class="form-row">
-                  <el-input v-model="childrenQueryForm.parentId" class="w-160" placeholder="父节点 ID，留空用当前选中节点，输入 0 查根节点"></el-input>
+                  <el-input v-model="childrenQueryForm.parentId" class="w-160" placeholder="父节点 ID，留空用当前选中节点"></el-input>
                   <el-input v-model="childrenQueryForm.page" class="w-120" placeholder="页码"></el-input>
                   <el-input v-model="childrenQueryForm.size" class="w-120" placeholder="每页条数"></el-input>
-                  <el-button type="primary" @click="queryChildren">children</el-button>
+                  <el-button type="primary" @click="queryChildren">children（非根）</el-button>
                   <el-button type="primary" plain @click="queryChildrenPage">childrenPage</el-button>
                 </div>
                 <div v-if="childrenMeta" class="summary-grid summary-grid-compact">
                   <div class="summary-item"><span class="summary-label">查询模式</span><span class="summary-value">{{ childrenMeta.mode === 'page' ? 'childrenPage' : 'children' }}</span></div>
-                  <div class="summary-item"><span class="summary-label">父节点</span><span class="summary-value">{{ childrenMeta.parentId }}</span></div>
+                  <div class="summary-item"><span class="summary-label">父节点</span><span class="summary-value">{{ childrenMeta.parentId > 0 ? childrenMeta.parentId : '根节点' }}</span></div>
                   <div class="summary-item" v-if="childrenMeta.mode === 'page'"><span class="summary-label">分页</span><span class="summary-value">第 {{ childrenMeta.page }} 页 / 每页 {{ childrenMeta.size }} 条</span></div>
                   <div class="summary-item" v-if="childrenMeta.mode === 'page'"><span class="summary-label">总量</span><span class="summary-value">{{ childrenMeta.total }} 条，{{ childrenMeta.hasNext ? '还有下一页' : '已到最后一页' }}</span></div>
                   <div class="summary-item summary-item-wide" v-if="childrenMeta.mode !== 'page'"><span class="summary-label">结果概览</span><span class="summary-value">当前返回 {{ childrenItems.length }} 个直接子节点。</span></div>
@@ -199,13 +199,9 @@
                       <div class="result-item-title">{{ item.name }} <span class="node-id">#{{ item.id }}</span></div>
                       <div class="result-item-meta">parent={{ item.parentId || 0 }} · sort={{ item.sort ?? '-' }} · level={{ item.level ?? '-' }}</div>
                     </div>
-                    <div class="result-item-badges">
-                      <span v-if="item.leaf" class="leaf-badge">叶子</span>
-                      <span v-if="item.bindable" class="bindable-badge">可绑定</span>
-                    </div>
                   </div>
                 </div>
-                <el-empty v-else description="这里会显示 children 或 childrenPage 的结果。"></el-empty>
+                <el-empty v-else description="这里会显示 children（非根）或 childrenPage 的结果。"></el-empty>
               </section>
 
               <section class="panel">
@@ -267,11 +263,11 @@
                     <span class="muted-tip">{{ queryTreeSummary }}</span>
                   </div>
                   <el-tree :data="queryTreeData" :props="treeProps" node-key="id" default-expand-all :expand-on-click-node="false">
-                    <template #default="{ data }">
+                    <template #default="{ node, data }">
                       <span class="custom-tree-node">
                         <span class="node-label">
-                          <el-icon v-if="!isLeaf(data)"><folder></folder></el-icon>
-                          <el-icon v-else><document></document></el-icon>
+                          <el-icon v-if="node.expanded"><folder-opened></folder-opened></el-icon>
+                          <el-icon v-else><folder></folder></el-icon>
                           <span class="node-name">{{ data.name }}</span>
                           <span class="node-id">#{{ data.id }}</span>
                           <span v-if="getBindingCount(data) > 0" class="binding-count-badge">已绑 {{ getBindingCount(data) }}</span>
